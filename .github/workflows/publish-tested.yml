@@ -1,0 +1,67 @@
+name: Publish tested artifacts
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Successful Build and release run on main
+        required: true
+      tag:
+        description: New release tag (vMAJOR.MINOR.PATCH)
+        required: true
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Validate tested source
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ inputs.run_id }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          [[ "$RUN_ID" =~ ^[0-9]+$ ]]
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          gh api "repos/$GH_REPO/actions/runs/$RUN_ID" > run.json
+          python - <<'PY'
+          import json, os, re
+          run = json.load(open('run.json'))
+          assert run['conclusion'] == 'success' and run['status'] == 'completed'
+          assert run['path'] == '.github/workflows/release.yml'
+          assert run['event'] == 'push' and run['head_branch'] == 'main'
+          assert run['head_repository']['full_name'] == os.environ['GH_REPO']
+          assert re.fullmatch('[0-9a-f]{40}', run['head_sha'])
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write('sha=' + run['head_sha'] + '\n')
+          PY
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.source.outputs.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.run_id }}
+          path: release-artifacts
+          merge-multiple: true
+      - name: Verify complete set and checksums, then publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          TESTED_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+          root = Path('release-artifacts')
+          expected = ['windows-x64.zip', 'macos-arm64.tar.gz', 'macos-x64.tar.gz', 'linux-x64.tar.gz']
+          assert len(list(root.iterdir())) == 8
+          for suffix in expected:
+              p = root / ('application-monitor-' + suffix)
+              checksum = p.with_name(p.name + '.sha256').read_text().split()[0]
+              assert hashlib.sha256(p.read_bytes()).hexdigest() == checksum
+          PY
+          gh release create "$RELEASE_TAG" release-artifacts/* --target "$TESTED_SHA" --title "投递进度助手 $RELEASE_TAG" --notes-file RELEASE_NOTES.md
