@@ -28,8 +28,9 @@ def main():
     bundle = ROOT / "dist/ApplicationMonitor"
     for name in ("web", "vendor"):
         shutil.copytree(ROOT / name, bundle / name, dirs_exist_ok=True)
-    for name in ("sites.example.json", "README.md", "LICENSE", "THIRD_PARTY_NOTICES.md"):
+    for name in ("sites.example.json", "README.md", "AI_USAGE.md", "LICENSE", "THIRD_PARTY_NOTICES.md"):
         shutil.copy2(ROOT / name, bundle / name)
+    shutil.copytree(ROOT / "docs/assets", bundle / "docs/assets", dirs_exist_ok=True)
     runtime = bundle / "runtime"
     runtime.mkdir(exist_ok=True)
     urllib.request.urlretrieve(f"https://raw.githubusercontent.com/python/cpython/v{platform.python_version()}/LICENSE", runtime / "PYTHON-LICENSE")

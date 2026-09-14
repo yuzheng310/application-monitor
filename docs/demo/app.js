@@ -29,7 +29,7 @@ function render(){
  $('overview').textContent=sites.length+' 家公司 · '+rows.length+' 条岗位记录';
  const last=sites.map(s=>s.checked_at).filter(Boolean).sort().at(-1);
  $('lastTime').textContent='最近检查 '+timeLabel(last,true);
- $('schedule').textContent=state.automation.enabled?'每天 '+state.times.join(' / ')+' 自动检查':'v1.1 公开演示 · 示例数据';
+ $('schedule').textContent=state.automation.enabled?'每天 '+state.times.join(' / ')+' 自动检查':'源码功能演示 · 虚构数据';
  $('refresh').disabled=state.running||requesting;
  $('workers').disabled=state.running||requesting;
  $('retryFailed').disabled=state.running||requesting;

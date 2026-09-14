@@ -12,3 +12,5 @@ main{display:grid;grid-template-columns:190px minmax(0,1fr);gap:24px;align-items
 #companyNav a:hover{background:#f2f5fb}#companyNav a[aria-current="location"]{background:#eaf0ff;color:#254eda;font-weight:600}#companyNav .nav-update{font-size:11px;color:#24624d;background:#e2f4ea;border-radius:4px;padding:2px 4px;white-space:nowrap;font-weight:400}
 .company-block{scroll-margin-top:16px}.company-block:target{border-color:#7195ff}
 @media(max-width:850px){main{grid-template-columns:minmax(0,1fr);gap:14px}.company-directory{position:static;max-height:none;padding:12px}#companyNav{flex-direction:row;flex-wrap:wrap;max-height:148px;overflow:auto}#companyNav a{padding:8px 10px;background:#f5f7fb}.company-directory p{margin-bottom:8px}}
+
+.brand svg{width:100%;height:100%;display:block}
