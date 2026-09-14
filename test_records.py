@@ -15,7 +15,7 @@ class RecordsTest(unittest.TestCase):
 
     def test_multiple_jobs_have_independent_statuses(self):
         raw='推理工程师第 1 志愿\n官网投递\n北京校招\n投递简历\n2026-09-10\n笔试中\n2026-09-11\n算法工程师第 2 志愿\n官网投递\n北京校招\n投递简历\n2026-09-10'
-        for site_id in ('xiaomi', 'xiaopeng'):
+        for site_id in ('xiaomi', 'xiaopeng', 'momenta'):
             with self.subTest(site_id=site_id):
                 r=parse_records(site_id,raw)
                 self.assertEqual([x['group'] for x in r],['written','applied'])

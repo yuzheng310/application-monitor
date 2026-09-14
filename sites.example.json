@@ -183,6 +183,14 @@
       "selector": "div:has(> [data-test=\"applicationListItem\"])",
       "ready_text": "应聘记录",
       "content_pattern": "官网投递"
+    },
+    {
+      "id": "momenta",
+      "name": "Momenta",
+      "url": "https://momenta.jobs.feishu.cn/campus/position/application",
+      "selector": "div:has(> [data-test=\"applicationListItem\"])",
+      "ready_text": "应聘记录",
+      "content_pattern": "官网投递"
     }
   ],
   "concurrency": 4
