@@ -27,6 +27,11 @@ def available(url):
 
 
 def main():
+    # Frozen Windows programs ignore PYTHONUTF8; redirected logs otherwise use
+    # the machine's legacy code page and fail on the first Chinese message.
+    for stream in (sys.stdout, sys.stderr):
+        if stream is not None and hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     os.umask(0o077)
     runtime.initialize()
     if len(sys.argv) > 1 and sys.argv[1] in ("serve", "check", "watch", "inspect"):

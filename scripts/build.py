@@ -79,6 +79,8 @@ def main():
         page = browser.new_page()
         page.goto("chrome://credits")
         (runtime / "CHROMIUM-CREDITS.html").write_text(page.content(), encoding="utf-8")
+        page.goto("chrome://terms")
+        (runtime / "BROWSER-TERMS.html").write_text(page.content(), encoding="utf-8")
         browser.close()
 
     versions = {"application": "1.0.0", "node": NODE_VERSION, "opencli": "1.8.6",
