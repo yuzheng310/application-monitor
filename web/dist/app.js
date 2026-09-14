@@ -33,7 +33,7 @@ function render(){
  for(const [id,label] of counts){const stat=el('div',id);stat.append(el('strong','',String(rows.filter(a=>a.group===id).length)),el('span','',label));summary.append(stat);}
  const ordered=[...sites].sort((a,b)=>{
    const rank=s=>Math.min(...rows.filter(r=>r.site.id===s.id).map(r=>counts.findIndex(c=>c[0]===r.group)),99);
-   return rank(a)-rank(b);
+   return Number(b.status==='内容变化')-Number(a.status==='内容变化') || rank(a)-rank(b);
  });
  for(const s of ordered){
   const apps=rows.filter(a=>a.site.id===s.id);

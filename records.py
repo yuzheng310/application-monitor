@@ -34,7 +34,7 @@ def parse_records(site_id, text):
         return m.group(1) if m else ''
     def dated(block):
         return [(block[i-1], x) for i,x in enumerate(block) if i and re.fullmatch(DATE,x)]
-    if site_id in ('minimax','poizon','kuro','sensetime','xiaomi'):
+    if site_id in ('minimax','poizon','kuro','sensetime','xiaomi','xiaopeng'):
         for title,b in segments([i-1 for i,x in enumerate(lines) if i and x=='官网投递']):
             pref = re.search(r'第\s*\d+\s*志愿',title)
             stages=dated(b)

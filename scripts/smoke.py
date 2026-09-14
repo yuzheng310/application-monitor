@@ -16,6 +16,7 @@ sys.path.insert(0, str(ROOT))
 
 
 def main():
+    expected_companies = len(json.loads((ROOT/'sites.example.json').read_text(encoding='utf-8'))['sites'])
     bundle = ROOT / 'dist/ApplicationMonitor'
     binary = bundle / ('ApplicationMonitor.exe' if os.name == 'nt' else 'ApplicationMonitor')
     with tempfile.TemporaryDirectory(prefix='application-monitor-smoke-') as directory:
@@ -41,7 +42,7 @@ def main():
             else:
                 raise RuntimeError('Packaged server did not start')
             assert status['app'] == 'application-monitor-public'
-            assert len(status['sites']) == 18
+            assert len(status['sites']) == expected_companies
             assert not any(site['applications'] for site in status['sites'])
             # Repeated launcher invocation must reuse the same server.
             subprocess.run([str(binary), '--no-browser', '--port', str(port)], check=True, timeout=30)
@@ -55,7 +56,7 @@ def main():
                     page = browser.new_page()
                     page.goto(base)
                     page.wait_for_selector('.company-block')
-                    assert page.locator('.company-block').count() == 18
+                    assert page.locator('.company-block').count() == expected_companies
                     assert page.locator('.job').count() == 0
                     page.screenshot(path=str(ROOT/'build/dashboard.png'), full_page=True)
                     cli = runtime.opencli_command()+['--profile', runtime.browser_profile(), 'browser', 'release-smoke']
@@ -67,7 +68,7 @@ def main():
                     assert result.returncode == 0, result.stderr
                     result = subprocess.run(cli+['eval', 'JSON.stringify({title:document.title,companies:document.querySelectorAll(".company-block").length})'],
                                             capture_output=True, text=True, encoding="utf-8", check=True, timeout=60)
-                    assert '18' in result.stdout and '投递进度助手' in result.stdout, result.stdout
+                    assert str(expected_companies) in result.stdout and '投递进度助手' in result.stdout, result.stdout
                     # End-to-end speed and retry regression, using only local fixtures.
                     login_required = [True]
                     class Fixture(BaseHTTPRequestHandler):

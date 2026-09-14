@@ -27,7 +27,8 @@ class RuntimeTests(unittest.TestCase):
             home = Path(directory)
             with patch.object(runtime, 'HOME', home), patch.object(runtime, 'DATA', home/'data'), patch.object(runtime, 'CONFIG', home/'sites.json'):
                 runtime.initialize()
-                self.assertEqual(len(json.loads(runtime.CONFIG.read_text(encoding='utf-8'))['sites']), 18)
+                self.assertEqual(json.loads(runtime.CONFIG.read_text(encoding='utf-8'))['sites'],
+                                 json.loads((runtime.ASSETS/'sites.example.json').read_text(encoding='utf-8'))['sites'])
                 runtime.CONFIG.write_text('{"sites": []}', encoding='utf-8')
                 runtime.initialize()
                 self.assertEqual(json.loads(runtime.CONFIG.read_text(encoding='utf-8'))['sites'], [])

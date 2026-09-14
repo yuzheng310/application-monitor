@@ -175,6 +175,14 @@
       "selector": "div:has(> [data-test=\"applicationListItem\"])",
       "ready_text": "应聘记录",
       "content_pattern": "官网投递"
+    },
+    {
+      "id": "xiaopeng",
+      "name": "小鹏汽车",
+      "url": "https://xiaopeng.jobs.feishu.cn/campus/position/application",
+      "selector": "div:has(> [data-test=\"applicationListItem\"])",
+      "ready_text": "应聘记录",
+      "content_pattern": "官网投递"
     }
   ],
   "concurrency": 4
