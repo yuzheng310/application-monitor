@@ -85,7 +85,16 @@ def main():
                         config = {'sites': sites, 'times': [], 'concurrency': 4}
                         runtime.CONFIG.write_text(json.dumps(config),encoding='utf-8')
                         start = time.monotonic()
-                        subprocess.run([str(binary),'check','--workers','1'],check=True,timeout=180)
+                        # Keep Playwright's sync event loop running while the external
+                        # process creates/closes browser targets (notably on Windows).
+                        serial_worker = subprocess.Popen([str(binary),'check','--workers','1'])
+                        deadline = time.monotonic() + 180
+                        while serial_worker.poll() is None:
+                            if time.monotonic() > deadline:
+                                serial_worker.kill();serial_worker.wait()
+                                raise RuntimeError('Serial fixture check timed out')
+                            page.wait_for_timeout(100)
+                        assert serial_worker.returncode == 0, 'Serial fixture check failed' 
                         serial = time.monotonic()-start
                         page.reload();page.wait_for_selector('.site-retry')
                         start = time.monotonic()
@@ -93,6 +102,10 @@ def main():
                         page.locator('.query-badge').nth(1).wait_for()
                         expect(page.locator('#refresh')).to_be_enabled(timeout=180000)
                         parallel = time.monotonic()-start
+                        with urllib.request.urlopen(base+'api/status') as response: parallel_status = json.load(response)
+                        assert not parallel_status['batch_error']
+                        assert parallel_status['progress']['completed'] == 4
+                        assert not any(x['stale'] for x in parallel_status['sites'])
                         assert parallel < serial, (serial, parallel)
                         print(f'REAL BROWSER: 4 sites serial={serial:.2f}s parallel={parallel:.2f}s speedup={serial/parallel:.2f}x')
                         sites.append({'id':'login','name':'登录测试','url':f'http://127.0.0.1:{fixtures.server_port}/login-fixture',
