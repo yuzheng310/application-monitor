@@ -1,0 +1,64 @@
+name: Build and release
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            label: windows-x64
+          - os: macos-14
+            label: macos-arm64
+          - os: macos-15-intel
+            label: macos-x64
+          - os: ubuntu-22.04
+            label: linux-x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.21.0'
+          cache: npm
+      - run: python -m pip install -r requirements-build.txt
+      - run: python -m unittest discover -v
+      - if: runner.os == 'Linux'
+        run: python -m playwright install-deps chromium
+      - run: python scripts/build.py
+      - run: python scripts/smoke.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.label }}
+          path: releases/*
+          compression-level: 0
+          retention-days: 7
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: releases
+          merge-multiple: true
+      - name: Publish all verified platforms together
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" releases/* --verify-tag --title "投递进度助手 $GITHUB_REF_NAME" --notes-file RELEASE_NOTES.md

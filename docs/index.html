@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="投递进度助手：18 家招聘官网，一张本地看板。下载完整包，一键启动，无需安装开发环境。">
+<title>投递进度助手 — 每一次投递，都有迹可循</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="nav wrap"><a class="brand" href="./"><span>投</span> 投递进度助手</a><a href="https://github.com/yuzheng310/application-monitor">GitHub ↗</a></nav>
+<main>
+<section class="hero wrap">
+<div class="intro"><div class="eyebrow"><span></span> 免费开源 · 数据留在你的电脑</div>
+<h1>每一次投递，<br>都有迹可循。</h1>
+<p class="lead">不用反复翻开十几个招聘网站。<br>把岗位、流程和变化，放进一张清楚的看板。</p>
+<div class="actions"><a class="button primary" href="#download">下载，一键启动 <span>↓</span></a><a class="button secondary" href="demo/">看看演示 ↗</a></div>
+<p class="small">Windows · macOS · Linux<br>已打包浏览器与运行依赖，无需安装开发环境。</p></div>
+<div class="preview" aria-label="虚构数据的界面示意">
+<div class="window-bar"><i></i><i></i><i></i><span>我的投递进度 · 示例</span></div>
+<div class="preview-content"><div class="preview-title"><strong>让进展，一目了然</strong><span class="local">本地保存</span></div>
+<div class="stats"><div><b>02</b><span>面试中</span></div><div><b>01</b><span>筛选中</span></div><div><b>03</b><span>已投递</span></div></div>
+<article class="example"><div><b>示例科技</b><span class="badge">面试中</span></div><h3>软件开发工程师</h3><p>技术研发 · 北京</p><div class="steps"><span class="done">✓<small>投递</small></span><em></em><span class="done">✓<small>筛选</small></span><em></em><span class="active">●<small>面试</small></span><em></em><span>○<small>Offer</small></span></div></article>
+<article class="example mini"><div><b>示例实验室</b><span class="badge muted">简历筛选</span></div><h3>算法工程师</h3></article>
+<div class="preview-foot"><span class="dot"></span> 记录变化时标记更新，失败时保留上次结果</div></div></div>
+</section>
+<section class="companies"><div class="wrap"><p>内置 18 家招聘入口的读取规则</p><div>百度 <span>MiniMax</span> 得物 <span>快手</span> 滴滴 <span>美团</span> 京东 <span>蚂蚁集团</span> 阿里巴巴 <span>小红书</span> 携程 <span>米哈游</span> 库洛游戏 <span>商汤</span> 同花顺 <span>网易游戏</span> 科大讯飞 <span>小米</span></div></div></section>
+<section class="wrap features"><div><span class="number">01 / 集中查看</span><h2>进度不再散落各处</h2><p>按公司查看岗位，区分筛选、笔试、面试和已结束记录。保留原文，随时回到官网核对。</p></div><div><span class="number">02 / 记录变化</span><h2>知道这次变了什么</h2><p>保存上次成功记录，展示内容差异。登录失效或查询失败会明确提示，不会误判为申请被拒。</p></div><div><span class="number">03 / 本地运行</span><h2>自己的数据，自己保管</h2><p>不需要注册平台账号。浏览器与数据存放在本机，公开网站只提供介绍、演示和下载。</p></div></section>
+<section class="wrap download" id="download"><div><div class="eyebrow">开箱即用</div><h2>下载完整包，<br>开始整理你的下一站。</h2><p>已包含 Python、Node.js、OpenCLI、Chromium、浏览器扩展和全部 npm 运行依赖。</p></div>
+<div class="download-list">
+<a href="https://github.com/yuzheng310/application-monitor/releases/latest/download/application-monitor-windows-x64.zip"><b>Windows</b><span>10 / 11 · x64</span><strong>↓ ZIP</strong></a>
+<a href="https://github.com/yuzheng310/application-monitor/releases/latest/download/application-monitor-macos-arm64.tar.gz"><b>macOS</b><span>Apple Silicon · macOS 14+</span><strong>↓ TAR.GZ</strong></a>
+<a href="https://github.com/yuzheng310/application-monitor/releases/latest/download/application-monitor-macos-x64.tar.gz"><b>macOS</b><span>Intel · macOS 14+</span><strong>↓ TAR.GZ</strong></a>
+<a href="https://github.com/yuzheng310/application-monitor/releases/latest/download/application-monitor-linux-x64.tar.gz"><b>Linux</b><span>Ubuntu 22.04 / 24.04 桌面 · x64</span><strong>↓ TAR.GZ</strong></a>
+<p>解压整个文件夹，双击 Start 文件。首次使用，在内置浏览器中登录招聘官网，再点击「一键查询全部」。</p></div></section>
+<section class="wrap faq"><h2>使用前，你可能想知道</h2><details open><summary>真的不需要安装依赖吗？</summary><p>完整 Release 包包含应用的运行环境、第三方包、浏览器和扩展，启动时不会执行安装命令或下载依赖。操作系统自身的桌面库和驱动由系统提供。请选择对应系统的完整包，而非 GitHub 的 Source code。</p></details><details><summary>首次登录和之后的查询怎么完成？</summary><p>软件使用独立内置浏览器，你需要在里面亲自登录招聘网站和处理验证码。之后会复用这个浏览器的登录状态。查询时需要联网，并保持内置浏览器打开。</p></details><details><summary>可以直接在这个网页查询我的投递吗？</summary><p>这里是公开介绍与演示网站。实际查询在你下载的软件里运行，使用本机浏览器登录状态；此网页不会读取或上传你的投递数据。</p></details><details><summary>为什么某家公司会查询失败？</summary><p>读取规则来自已适配的招聘页面。网站改版、未登录、没有可识别记录或额外验证可能导致失败；应用会保留上次成功结果。当前不自动遍历所有年份、分页或招聘类别，具体进度仍以官网和 HR 通知为准。</p></details><details><summary>系统提示未知开发者怎么办？</summary><p>发布包尚未进行商业代码签名。macOS 可在「隐私与安全性」中允许本次打开，Windows 可能显示未知发布者提示。完整说明和 SHA-256 校验文件见 GitHub Release，无需关闭系统安全功能。</p></details></section>
+</main><footer class="wrap"><span>投递进度助手 · 祝每一次认真准备，都有回响。</span><div><a href="https://github.com/yuzheng310/application-monitor">源代码</a><a href="https://github.com/yuzheng310/application-monitor/issues">反馈问题</a><a href="https://github.com/yuzheng310/application-monitor/blob/main/LICENSE">MIT License</a></div></footer>
+</body></html>

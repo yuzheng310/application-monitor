@@ -1,0 +1,180 @@
+{
+  "profile": null,
+  "times": [
+    "09:00",
+    "12:00",
+    "19:00"
+  ],
+  "sites": [
+    {
+      "id": "baidu",
+      "name": "百度",
+      "url": "https://talent.baidu.com/jobs/center?dev=0",
+      "selector": "[class^=\"delivery-record__\"]",
+      "ready_text": "投递记录",
+      "content_pattern": "投递时间|还没有投递"
+    },
+    {
+      "id": "minimax",
+      "name": "MiniMax",
+      "url": "https://vrfi1sk8a0.jobs.feishu.cn/379481/position/application",
+      "selector": "div:has(> [data-test=\"applicationListItem\"])",
+      "ready_text": "应聘记录",
+      "content_pattern": "官网投递"
+    },
+    {
+      "id": "poizon",
+      "name": "得物",
+      "url": "https://poizon.jobs.feishu.cn/578078/position/application",
+      "selector": "div:has(> [data-test=\"applicationListItem\"])",
+      "ready_text": "应聘记录",
+      "content_pattern": "官网投递"
+    },
+    {
+      "id": "kuaishou",
+      "name": "快手",
+      "url": "https://campus.kuaishou.cn/recruit/campus/e/#/campus/my-apply",
+      "selector": ".apply-list",
+      "ready_text": "投递记录",
+      "progress": {
+        "row": ".apply-record-container",
+        "title": "h3",
+        "current": ".status-text.processing"
+      },
+      "content_pattern": "投递时间"
+    },
+    {
+      "id": "didi",
+      "name": "滴滴",
+      "url": "https://campus.didiglobal.com/campus_apply/didiglobal/96064#/candidateHome/applications",
+      "selector": "[class^=\"position-block-\"]",
+      "ready_text": "投递记录",
+      "content_pattern": "状态:"
+    },
+    {
+      "id": "meituan",
+      "name": "美团",
+      "url": "https://zhaopin.meituan.com/web/personal-center/delivery-record",
+      "selector": ".delivery_record",
+      "ready_text": "投递记录",
+      "content_pattern": "投递时间"
+    },
+    {
+      "id": "jd",
+      "name": "京东",
+      "url": "https://campus.jd.com/login#/myDeliver?tabKey=1&type=present",
+      "selector": ".ant-tabs-tabpane-active",
+      "ready_text": "网申投递",
+      "content_pattern": "投递详情"
+    },
+    {
+      "id": "ant",
+      "name": "蚂蚁集团",
+      "url": "https://talent.antgroup.com/personal/campus-application",
+      "selector": "[class^=\"schoolApplicationCon___\"]",
+      "ready_text": "我的应聘",
+      "progress": {
+        "row": "[class^=\"schoolApplicationCon___\"]",
+        "current": ".ant-steps-item-process"
+      },
+      "content_pattern": "申请日期"
+    },
+    {
+      "id": "alibaba",
+      "name": "阿里巴巴",
+      "url": "https://campus-talent.alibaba.com/personal/applications",
+      "selector": "#pcApplicationProgressScrollContainer",
+      "ready_text": "应聘进展",
+      "content_pattern": "申请日期"
+    },
+    {
+      "id": "xiaohongshu",
+      "name": "小红书",
+      "url": "https://job.xiaohongshu.com/campus/record",
+      "selector": "div[class=\"flex-1 min-w-0\"]",
+      "ready_text": "投递记录",
+      "progress": {
+        "row": ".BjtJdv5a2V3JBzsD_87R",
+        "title": "span.text-h5",
+        "current": ".relative.z-10.w-20:has(.bg-brand-06)"
+      },
+      "read_steps": [
+        {
+          "selector": "div[class=\"flex-1 min-w-0\"] > .mb-6:last-child > .cursor-pointer",
+          "done_selector": "div[class=\"flex-1 min-w-0\"] > .mb-6:last-child > .bg-white"
+        }
+      ],
+      "content_pattern": "投递简历"
+    },
+    {
+      "id": "ctrip",
+      "name": "携程",
+      "url": "https://careers.ctrip.com/#/campus/personal-homepage/preview",
+      "selector": "[role=\"tabpanel\"][id$=\"-panel-3\"].ant-tabs-tabpane-active",
+      "ready_text": "份申请记录",
+      "read_steps": [
+        {
+          "selector": "[role=\"tab\"][id$=\"-tab-3\"]",
+          "done_selector": "[role=\"tabpanel\"][id$=\"-panel-3\"].ant-tabs-tabpane-active"
+        }
+      ],
+      "content_pattern": "申请日期|0 份申请记录"
+    },
+    {
+      "id": "mihoyo",
+      "name": "米哈游",
+      "url": "https://jobs.mihoyo.com/#/campus/applyRecord",
+      "selector": ".ant-table",
+      "ready_text": "应聘记录",
+      "content_pattern": "投递日期"
+    },
+    {
+      "id": "kuro",
+      "name": "库洛游戏",
+      "url": "https://kurogame.jobs.feishu.cn/campus/position/application",
+      "selector": "div:has(> [data-test=\"applicationListItem\"])",
+      "ready_text": "应聘记录",
+      "content_pattern": "官网投递"
+    },
+    {
+      "id": "sensetime",
+      "name": "商汤",
+      "url": "https://sensetime.jobs.feishu.cn/edu/position/application",
+      "selector": "div:has(> [data-test=\"applicationListItem\"])",
+      "ready_text": "应聘记录",
+      "content_pattern": "官网投递"
+    },
+    {
+      "id": "10jqka",
+      "name": "同花顺",
+      "url": "https://campus.10jqka.com.cn/userCenter/employRecord",
+      "selector": ".record-content",
+      "ready_text": "投递职位",
+      "content_pattern": "当前状态"
+    },
+    {
+      "id": "netease",
+      "name": "网易游戏",
+      "url": "https://campus.game.163.com/app/personal/apply",
+      "selector": ".p-personal-apply",
+      "ready_text": "应聘记录",
+      "content_pattern": "应聘状态"
+    },
+    {
+      "id": "iflytek",
+      "name": "科大讯飞",
+      "url": "https://iflytek.zhiye.com/personal/deliveryRecord",
+      "selector": "section[class^=\"stylest__STListRoot\"]",
+      "ready_text": "投递记录",
+      "content_pattern": "当前进度"
+    },
+    {
+      "id": "xiaomi",
+      "name": "小米",
+      "url": "https://xiaomi.jobs.f.mioffice.cn/campus/position/application",
+      "selector": "div:has(> [data-test=\"applicationListItem\"])",
+      "ready_text": "应聘记录",
+      "content_pattern": "官网投递"
+    }
+  ]
+}

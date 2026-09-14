@@ -1,0 +1,7 @@
+{
+  "name": "application-monitor-bundle",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Pinned build inputs for the bundled OpenCLI runtime",
+  "dependencies": {"@jackwener/opencli": "1.8.6"}
+}

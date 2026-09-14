@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.venv/
+/build/
+/dist/
+/releases/
+/runtime/
+node_modules/
+data/
+sites.json
+*.spec
+.DS_Store
+test-results/
+
+.openai/

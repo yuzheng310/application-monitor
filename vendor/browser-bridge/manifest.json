@@ -1,0 +1,32 @@
+{
+   "action": {
+      "default_icon": {
+         "16": "icons/icon-16.png",
+         "32": "icons/icon-32.png"
+      },
+      "default_popup": "popup.html",
+      "default_title": "OpenCLI"
+   },
+   "background": {
+      "service_worker": "dist/background.js",
+      "type": "module"
+   },
+   "content_security_policy": {
+      "extension_pages": "script-src 'self'; object-src 'self'"
+   },
+   "description": "Browser automation bridge for the OpenCLI CLI tool. Executes commands in Chrome tab leases via a local daemon.",
+   "homepage_url": "https://github.com/jackwener/opencli",
+   "host_permissions": [ "\u003Call_urls>" ],
+   "icons": {
+      "128": "icons/icon-128.png",
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzs2sa0xyaOirJPDWXH+dRFnnY05TNcUnKG95DkNxdWMH/UKD4G3gU63377A4Q6upmSXPYFY0jtC/Lfa1kpQYvenuaVOSndty9g3DaV4SrSxv+jGgyfFh0B+Ws87tUo1efvuonXTcnqJDV+BPSDV5JIAaZC+T5jOyHXE0dfHKzfOhaLsa7rHIrjIP8MMmoEb55OOdXf8MYAmD7x8ltfnBdeHEU+XzXxUpN+2S0MC93qrsqNHYDjSKfyXSQUZdJ4yMqkT/5wdawANlB9XP7M68XQTyMIxSGAWT5iBmYszEUfKx1VcIBbJ52tRBqTG/Jjzo6pVYp9e/GlU9W72940A6KQIDAQAB",
+   "manifest_version": 3,
+   "name": "OpenCLI",
+   "permissions": [ "debugger", "tabs", "cookies", "activeTab", "alarms", "storage", "tabGroups", "downloads" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "1.0.24"
+}
