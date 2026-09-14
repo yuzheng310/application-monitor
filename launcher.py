@@ -11,6 +11,10 @@ import urllib.request
 import runtime
 
 
+class OlderVersion(RuntimeError):
+    pass
+
+
 def available(url):
     try:
         with urllib.request.urlopen(url + "api/status", timeout=2) as response:
@@ -19,6 +23,8 @@ def available(url):
             raise RuntimeError("网页端口被其他软件占用，请通过 --port 指定其他端口。")
         if value.get("instance") != runtime.browser_profile():
             raise RuntimeError("网页端口被另一个数据目录占用，请使用不同端口。")
+        if value.get('version') != runtime.VERSION:
+            raise OlderVersion('此端口运行的是其他版本。')
         return True
     except urllib.error.HTTPError as error:
         raise RuntimeError("网页端口被其他服务占用。") from error
@@ -42,7 +48,12 @@ def main():
         else:
             import monitor
             sys.argv.insert(1, mode)
-            monitor.main()
+            try:
+                monitor.main()
+            except Exception as error:
+                from check_errors import details
+                monitor.save(runtime.DATA / 'progress.json', {'status': 'failed', **details(error)})
+                raise
         return
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=18765)
@@ -57,8 +68,17 @@ def main():
         import monitor
         print(json.dumps({"ok": True, "opencli": version.stdout.strip(), "timezone": str(monitor.TZ)}))
         return
-    url = f"http://127.0.0.1:{args.port}/"
-    if not available(url):
+    for candidate in range(args.port, min(args.port + 20, 65536)):
+        url = f"http://127.0.0.1:{candidate}/"
+        try:
+            running = available(url)
+            args.port = candidate
+            break
+        except OlderVersion:
+            continue
+    else:
+        raise RuntimeError('已有多个旧版本运行，请通过 --port 指定空闲端口。')
+    if not running:
         with (runtime.DATA / "web-server.log").open("ab") as log:
             worker = subprocess.Popen(runtime.command("serve", "--port", str(args.port)),
                                       stdout=log, stderr=log, **runtime.child_options(detached=True))

@@ -8,8 +8,10 @@ import json
 import os
 from pathlib import Path
 import re
-import shutil
+from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
+from check_errors import CheckError, cli_error, details
 import subprocess
+import uuid
 import time
 from datetime import datetime, timedelta
 from urllib.parse import urlsplit
@@ -30,14 +32,19 @@ def normalize(text):
     return "\n".join(" ".join(line.split()) for line in text.splitlines() if line.strip())
 
 
-def cli(config, site, *args):
-    command = runtime.opencli_command()
-    command += ["--profile", config.get("profile") or runtime.browser_profile()]
-    command += ["browser", "applications-" + site["id"], *args]
-    result = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=50, **runtime.child_options())
+def cli(config, site, *args, timeout=50):
+    try:
+        command = runtime.opencli_command()
+    except RuntimeError:
+        raise CheckError('DEPENDENCY_MISSING')
+    profile = config.get("profile") or runtime.browser_profile()
+    if profile:
+        command += ["--profile", profile]
+    command += ["browser", "applications-" + site["id"] + config.get("_session_suffix", ""), *args]
+    result = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout, **runtime.child_options())
     if result.returncode:
         # 原始错误可能含带令牌的 URL，不保存到结果中。
-        raise RuntimeError("浏览器连接失败，请重新双击启动软件，确认内置浏览器保持打开")
+        raise cli_error(result.stderr or result.stdout)
     return result.stdout.strip()
 
 
@@ -65,9 +72,9 @@ def read_page(config, site):
     try:
         value = json.loads(raw)
     except ValueError:
-        raise RuntimeError("OpenCLI 返回格式不符，未更新历史记录")
+        raise CheckError('INVALID_RESPONSE')
     if not isinstance(value, dict) or not isinstance(value.get("text"), str):
-        raise RuntimeError("OpenCLI 未返回有效页面")
+        raise CheckError('INVALID_RESPONSE')
     return value
 
 
@@ -80,18 +87,20 @@ def same_route(expected_url, actual_url):
 
 def validate(page, site):
     if not same_route(site["url"], page["url"]):
-        raise RuntimeError("页面发生跳转，可能需要重新登录")
+        if re.search(r"(?:/|#)(?:login|signin|sign-in|auth)(?:[/?#]|$)", page.get("url", ""), re.I):
+            raise CheckError('LOGIN_REQUIRED')
+        raise CheckError('PAGE_REDIRECT')
     if page.get("auth_required") or re.search(r"获取验证码|短信验证码|扫码登录|安全验证|请完成验证", page.get("body", "")):
-        raise RuntimeError("需要在内置浏览器中完成登录或验证")
+        raise CheckError('LOGIN_REQUIRED')
     if not site.get("ready_text") or not page.get("ready_found", site["ready_text"] in page.get("body", "")):
-        raise RuntimeError("未找到已配置的投递列表标识，页面尚未就绪或结构变化")
+        raise CheckError('SITE_CHANGED', wait_for_page=True)
     if page.get("count") != 1:
-        raise RuntimeError("投递区域不存在或不唯一，需要重新核实读取规则")
+        raise CheckError('SITE_CHANGED', wait_for_page=True)
     text = normalize(page.get("text", ""))
     if not text or re.search(r"加载中|加载失败|网络异常|系统繁忙", text):
-        raise RuntimeError("投递内容为空、未加载完成或网站报错")
+        raise CheckError('PAGE_LOADING', wait_for_page=True)
     if site.get("content_pattern") and not re.search(site["content_pattern"], text):
-        raise RuntimeError("投递区域尚未出现记录或明确的空列表提示")
+        raise CheckError('SITE_CHANGED', wait_for_page=True)
     if page.get("extra"):
         text += "\n\n页面标记的当前阶段：\n" + normalize("\n".join(page["extra"]))
     return text
@@ -110,7 +119,7 @@ def prepare_page(config, site):
             })()""".replace("DONE", json.dumps(step["done_selector"])).replace("TARGET", json.dumps(step["selector"]))
             status = json.loads(cli(config, site, "eval", script))
             if not same_route(site["url"], status["url"]):
-                raise RuntimeError("记录页面发生跳转，需要登录或重新核实入口")
+                raise CheckError('PAGE_REDIRECT')
             if status["done"]:
                 break
             if status["count"] == 1:
@@ -119,27 +128,40 @@ def prepare_page(config, site):
                 for _ in range(12):
                     status = json.loads(cli(config, site, "eval", script))
                     if not same_route(site["url"], status["url"]):
-                        raise RuntimeError("切换记录时页面发生跳转")
+                        raise CheckError('PAGE_REDIRECT')
                     if status["done"]:
                         break
                     time.sleep(1)
                 else:
-                    raise RuntimeError("记录标签或历史列表未能展开")
+                    raise CheckError('SITE_CHANGED')
                 break
             if time.monotonic() >= deadline:
-                raise RuntimeError("未找到唯一的记录标签或展开按钮")
+                raise CheckError('SITE_CHANGED')
             time.sleep(1)
 
 
 def check_site(config, site):
     if not site.get("selector") or not site.get("ready_text"):
-        raise RuntimeError("待接入：需要在已登录页面核实投递区域与就绪标识")
+        raise CheckError('CONFIG_ERROR')
+    # OpenCLI intentionally reuses an already-loaded URL; a fresh owned lease
+    # ensures every check actually reloads the website without touching user tabs.
+    config = dict(config, _session_suffix="-" + uuid.uuid4().hex[:12])
     cli(config, site, "open", site["url"], "--window", "background")
+    try:
+        return read_stable_site(config, site)
+    finally:
+        try:
+            cli(config, site, "close", timeout=5)
+        except Exception:
+            pass  # Cleanup failure must not discard a successful record.
+
+
+def read_stable_site(config, site):
     prepare_page(config, site)
     previous = None
     stable = 0
     deadline = time.monotonic() + 40
-    last_error = "页面未稳定"
+    last_error = CheckError('PAGE_LOADING')
     while time.monotonic() < deadline:
         try:
             text = validate(read_page(config, site), site)
@@ -147,58 +169,102 @@ def check_site(config, site):
             previous = text
             if stable >= 3:
                 return text
-        except RuntimeError as error:
-            last_error = str(error)
+        except CheckError as error:
+            if not error.wait_for_page:
+                raise
+            last_error = error
             previous, stable = None, 0
         time.sleep(2)
-    raise RuntimeError(last_error)
+    raise last_error
+
+
+def concurrency_limit(config):
+    value = config.get("concurrency", 4)
+    if type(value) is not int or not 1 <= value <= 8:
+        raise CheckError('CONFIG_ERROR')
+    return value
+
+
+def check_result(config, site, old):
+    started = time.monotonic()
+    result = {"id": site["id"], "company": site["name"],
+              "checked_at": datetime.now(TZ).isoformat(timespec="seconds")}
+    try:
+        text = check_site(config, site)
+        prior = old.get("text")
+        result.update(status="首次记录" if prior is None else "内容变化" if prior != text else "无变化", text=text)
+        if prior is not None and prior != text:
+            result["diff"] = "\n".join(difflib.unified_diff(prior.splitlines(), text.splitlines(), fromfile="上次", tofile="本次", lineterm=""))
+    except Exception as error:
+        # One malformed site/response must not cancel the other companies.
+        result.update(status="检查失败", last_success=old.get("last_success"), **details(error))
+    result["elapsed_seconds"] = round(time.monotonic() - started, 2)
+    return result
 
 
 def run_once(config):
+    workers = concurrency_limit(config)
+    sites = config["sites"]
+    ids = [site['id'] for site in sites]
+    if len(ids) != len(set(ids)):
+        raise CheckError('CONFIG_ERROR')
     state_path = DATA / "state.json"
     state = json.loads(state_path.read_text(encoding="utf-8")) if state_path.exists() else {}
+    started = time.monotonic()
     stamp = datetime.now(TZ).isoformat(timespec="seconds")
     results = []
     progress = {"status": "running", "started_at": stamp, "pid": os.getpid(),
-                "completed": 0, "total": len(config["sites"]), "current": None, "results": []}
-    save(DATA / "progress.json", progress)
-    for site in config["sites"]:
-        progress["current"] = site["name"]
+                "completed": 0, "total": len(sites), "current": None, "active": [],
+                "pending": ids[:], "concurrency": workers, "results": []}
+    def publish():
+        progress.update(completed=len(results), results=list(results),
+                        elapsed_seconds=round(time.monotonic() - started, 2))
+        progress["current"] = "、".join(x['company'] for x in progress['active']) or None
         save(DATA / "progress.json", progress)
-        old = state.get(site["id"], {})
-        checked_at = datetime.now(TZ).isoformat(timespec="seconds")
-        result = {"id": site["id"], "company": site["name"], "checked_at": checked_at}
-        try:
-            text = check_site(config, site)
-            prior = old.get("text")
-            result["status"] = "首次记录" if prior is None else ("内容变化" if prior != text else "无变化")
-            result["text"] = text
-            if prior is not None and prior != text:
-                result["diff"] = "\n".join(difflib.unified_diff(prior.splitlines(), text.splitlines(), fromfile="上次", tofile="本次", lineterm=""))
-            state[site["id"]] = {"text": text, "last_success": checked_at}
-        except (RuntimeError, subprocess.TimeoutExpired, ValueError) as error:
-            result.update(status="检查失败", error="OpenCLI 超时" if isinstance(error, subprocess.TimeoutExpired) else str(error), last_success=old.get("last_success"))
-        results.append(result)
-        save(state_path, state)
-        progress.update(completed=len(results), results=results)
-        save(DATA / "progress.json", progress)
-        print(site["name"] + "：" + result["status"] + (" — " + result["error"] if "error" in result else ""), flush=True)
-    save(state_path, state)
-    save(DATA / "latest.json", results)
-    with (DATA / "history.jsonl").open("a", encoding="utf-8") as output:
-        for result in results:
-            output.write(json.dumps(result, ensure_ascii=False) + "\n")
-    report = ["投递进度检查 · " + stamp, ""]
-    report += [r["company"] + "：" + r["status"] for r in results]
-    report += ["", "以下为各网站投递区域原文；流程步骤名称不代表已经完成。", ""]
-    for result in results:
-        report += [result["company"] + "：" + result["status"], result.get("error", result.get("diff", result.get("text", ""))), ""]
-        if result.get("last_success"):
-            report += ["上次成功检查：" + result["last_success"], ""]
-    (DATA / "最新结果.txt").write_text("\n".join(report), encoding="utf-8")
-    progress.update(status="complete", current=None, finished_at=datetime.now(TZ).isoformat(timespec="seconds"))
-    save(DATA / "progress.json", progress)
-    return not any(r["status"] == "检查失败" for r in results)
+    publish()
+    # Only the coordinator writes files; workers return independent site results.
+    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="application") as executor:
+        pending = iter(sites)
+        futures = {}
+        def submit_next():
+            site = next(pending, None)
+            if site is None:
+                return
+            futures[executor.submit(check_result, config, site, dict(state.get(site['id'], {})))] = site
+            progress['pending'].remove(site['id'])
+            progress['active'].append({'id': site['id'], 'company': site['name']})
+        for _ in range(min(workers, len(sites))):
+            submit_next()
+        publish()
+        while futures:
+            completed, _ = wait(futures, return_when=FIRST_COMPLETED)
+            for future in completed:
+                site = futures.pop(future)
+                result = future.result()
+                if result['status'] != '检查失败':
+                    state[site['id']] = {'text': result['text'], 'last_success': result['checked_at']}
+                results.append(result)
+                progress['active'] = [x for x in progress['active'] if x['id'] != site['id']]
+                save(state_path, state)
+                # Preserve each completed result, even if a later query is interrupted.
+                with (DATA / "history.jsonl").open("a", encoding="utf-8") as output:
+                    output.write(json.dumps(result, ensure_ascii=False) + "\n")
+                print(site['name'] + '：' + result['status'] + (' — ' + result['error'] if 'error' in result else ''), flush=True)
+                submit_next()
+            publish()
+    # A targeted retry replaces only that company's last result.
+    latest_path = DATA / 'latest.json'
+    previous = json.loads(latest_path.read_text(encoding='utf-8')) if latest_path.exists() else []
+    by_id = {x.get('id', x['company']): x for x in previous}
+    by_id.update({x['id']: x for x in results})
+    save(latest_path, list(by_id.values()))
+    report = ['投递进度检查 · ' + stamp, '']
+    for result in by_id.values():
+        report += [result['company'] + '：' + result['status'], result.get('error', result.get('diff', result.get('text', ''))), result.get('suggestion', ''), '']
+    (DATA / '最新结果.txt').write_text('\n'.join(report), encoding='utf-8')
+    progress.update(status='complete', active=[], pending=[], finished_at=datetime.now(TZ).isoformat(timespec='seconds'))
+    publish()
+    return not any(r['status'] == '检查失败' for r in results)
 
 
 def next_run(now, times):
@@ -215,14 +281,28 @@ def next_run(now, times):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=["check", "watch", "inspect"])
-    parser.add_argument("--site", help="仅检查指定站点；名称见 sites.json 的 id")
+    parser.add_argument("--site", action="append", help="仅检查指定站点，可重复指定")
+    parser.add_argument("--workers", type=int, choices=range(1, 9), help="并发数，默认 4")
     args = parser.parse_args()
     os.umask(0o077)
     runtime.initialize()
     DATA.mkdir(exist_ok=True, mode=0o700)
-    config = json.loads(runtime.CONFIG.read_text(encoding="utf-8"))
+    try:
+        config = json.loads(runtime.CONFIG.read_text(encoding="utf-8"))
+        if not isinstance(config, dict) or not isinstance(config.get('sites'), list):
+            raise ValueError()
+        for site in config['sites']:
+            if not isinstance(site, dict) or not all(isinstance(site.get(k), str) for k in ('id','name','url')):
+                raise ValueError()
+        concurrency_limit(config)
+    except (OSError, ValueError, TypeError):
+        raise CheckError('CONFIG_ERROR')
+    if args.workers is not None:
+        config["concurrency"] = args.workers
     if args.site:
-        config["sites"] = [s for s in config["sites"] if s["id"] == args.site]
+        if set(args.site) - {s["id"] for s in config["sites"]}:
+            parser.error("未知站点 id")
+        config["sites"] = [s for s in config["sites"] if s["id"] in args.site]
         if not config["sites"]:
             parser.error("未知站点 id")
     with (DATA / "monitor.lock").open("a+") as lock:
@@ -231,7 +311,7 @@ def main():
         except BlockingIOError:
             parser.exit(1, "已有监控进程运行，请先停止它。\n")
         if args.command == "inspect":
-            site = next((s for s in config["sites"] if s["id"] == args.site), None)
+            site = next((s for s in config["sites"] if args.site and s["id"] == args.site[0]), None)
             if not site:
                 parser.error("inspect 需要有效的 --site")
             cli(config, site, "open", site["url"], "--window", "background")

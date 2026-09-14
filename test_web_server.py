@@ -57,6 +57,11 @@ class DashboardTests(unittest.TestCase):
                     with self.assertRaises(HTTPError) as error:urlopen(Request(base+'/api/refresh',method='POST',headers=headers))
                     self.assertEqual(error.exception.code,403)
                 self.assertEqual(refresh.call_count,0)
+                for payload in [{'site_ids': []}, {'site_ids': 'one'}, {'workers': True}, {'workers': 99}, {'unknown': 'x'}]:
+                    bad=Request(base+'/api/refresh', method='POST', data=json.dumps(payload).encode(), headers={'X-Query-Token': dashboard.token, 'Origin': base})
+                    with self.assertRaises(HTTPError) as error:urlopen(bad)
+                    self.assertEqual(error.exception.code,400)
+                self.assertEqual(refresh.call_count,0)
                 request=Request(base+'/api/refresh',method='POST',headers={'X-Query-Token':dashboard.token,'Origin':base})
                 with urlopen(request) as response:self.assertEqual(response.status,202)
                 with self.assertRaises(HTTPError) as error:urlopen(request)

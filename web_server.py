@@ -11,6 +11,7 @@ import secrets
 import subprocess
 import sys
 import threading
+from check_errors import CheckError, details
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
@@ -56,7 +57,15 @@ class Dashboard:
         return (self.worker is not None and self.worker.poll() is None) or scanner_busy()
 
     def status(self):
-        config = read_json(ROOT / "sites.json", {"sites": [], "times": []})
+        try:
+            config = json.loads((ROOT / 'sites.json').read_text(encoding='utf-8'))
+            if not isinstance(config, dict) or not isinstance(config.get('sites'), list):
+                raise ValueError()
+            for site in config['sites']:
+                if not isinstance(site, dict) or not all(isinstance(site.get(k), str) for k in ('id', 'name', 'url')):
+                    raise ValueError()
+        except (OSError, ValueError):
+            raise CheckError('CONFIG_ERROR')
         latest = read_json(DATA / "latest.json", [])
         baseline = read_json(DATA / "state.json", {})
         progress = read_json(DATA / "progress.json", {})
@@ -65,6 +74,8 @@ class Dashboard:
         if progress.get("status") == "running" or running:
             by_name.update({r["company"]: r for r in progress.get("results", [])})
         sites = []
+        active_ids = {x['id'] for x in progress.get('active', [])} if running else set()
+        pending_ids = set(progress.get('pending', [])) if running else set()
         for site in config["sites"]:
             result = dict(by_name.get(site["name"], {}))
             old = baseline.get(site["id"], {})
@@ -75,22 +86,38 @@ class Dashboard:
             if not result.get("text") and old.get("text"):
                 result["text"] = old["text"]
             result["applications"] = parse_records(site["id"], result.get("text", ""))
+            result['query_state'] = 'running' if site['id'] in active_ids else 'pending' if site['id'] in pending_ids else 'idle'
             sites.append(result)
         interrupted = not running and progress.get("status") == "running"
-        progress = {k: progress.get(k) for k in ("started_at", "finished_at", "current", "completed", "total")}
+        batch_error = {k: progress.get(k) for k in ('error', 'error_code', 'suggestion')} if progress.get('status') == 'failed' else None
+        progress = {k: progress.get(k) for k in ("started_at", "finished_at", "current", "completed", "total", "active", "pending", "concurrency", "elapsed_seconds")}
         if not running:
             progress["current"] = None
-        return {"groups": GROUPS, "app": "application-monitor-public", "instance": runtime.browser_profile(), "sites": sites, "running": running, "progress": progress,
-                "interrupted": interrupted, "times": config.get("times", []),
+        return {"groups": GROUPS, "app": "application-monitor-public", "version": runtime.VERSION, "instance": runtime.browser_profile(), "sites": sites, "running": running, "progress": progress,
+                "interrupted": interrupted, "batch_error": batch_error, "concurrency": config.get('concurrency', 4), "times": config.get("times", []),
                 "automation": read_json(DATA / "automation.json", {"enabled": False}),
                 "csrf_token": self.token}
 
-    def refresh(self):
+    def refresh(self, site_ids=None, workers=None):
         with self.lock:
             if self.is_running():
                 return False
+            args = []
+            if site_ids is not None:
+                known = {x['id'] for x in self.status()['sites']}
+                if not site_ids or any(x not in known for x in site_ids):
+                    raise ValueError('请选择有效的公司后重试。')
+                for site_id in dict.fromkeys(site_ids):
+                    args += ['--site', site_id]
+            if workers is not None:
+                args += ['--workers', str(workers)]
+            # Show pending companies immediately instead of a previous run's progress.
+            selected = [s for s in self.status()['sites'] if site_ids is None or s['id'] in site_ids]
+            from monitor import save
+            save(DATA / 'progress.json', {'status': 'running', 'completed': 0, 'total': len(selected),
+                 'active': [], 'pending': [s['id'] for s in selected], 'results': [], 'concurrency': workers or 4})
             with (DATA / "web-query.log").open("ab") as output:
-                self.worker = subprocess.Popen(runtime.command("check"),
+                self.worker = subprocess.Popen(runtime.command("check", *args),
                     stdout=output, stderr=subprocess.STDOUT, **runtime.child_options(detached=True))
             return True
 
@@ -119,7 +146,10 @@ def handler_for(dashboard):
                 return
             path = urlsplit(self.path).path
             if path == "/api/status":
-                self.reply(200, dashboard.status())
+                try:
+                    self.reply(200, dashboard.status())
+                except CheckError as error:
+                    self.reply(500, details(error))
                 return
             files = {"/": ("index.html", "text/html; charset=utf-8"),
                      "/app.js": ("app.js", "text/javascript; charset=utf-8"),
@@ -143,8 +173,23 @@ def handler_for(dashboard):
                 self.reply(404, {"error": "操作不存在"})
                 return
             try:
-                started = dashboard.refresh()
-                self.reply(202 if started else 409, {"started": started, "message": "正在查询全部公司" if started else "已有查询正在进行"})
+                length = int(self.headers.get('Content-Length', '0'))
+                if not 0 <= length <= 4096:
+                    raise ValueError('请求过大，请刷新网页后重试。')
+                body = json.loads(self.rfile.read(length)) if length else {}
+                if not isinstance(body, dict) or set(body) - {'site_ids', 'workers'}:
+                    raise ValueError('查询参数无效。')
+                site_ids, workers = body.get('site_ids'), body.get('workers')
+                if 'site_ids' in body and (not isinstance(site_ids, list) or not site_ids or len(site_ids) > 100 or any(not isinstance(x, str) for x in site_ids)):
+                    raise ValueError('请选择有效的公司。')
+                if 'workers' in body and (type(workers) is not int or not 1 <= workers <= 8):
+                    raise ValueError('并发数应为 1 到 8 之间的整数。')
+                started = dashboard.refresh(site_ids, workers) if body else dashboard.refresh()
+                self.reply(202 if started else 409, {"started": started, "message": "已开始查询" if started else "已有查询正在进行，请等待完成。"})
+            except (ValueError, UnicodeError):
+                self.reply(400, {'error': '查询参数无效，请刷新网页后重新选择公司和并发数。'})
+            except CheckError as error:
+                self.reply(400, details(error))
             except OSError:
                 self.reply(500, {"error": "未能启动查询，请检查本地服务"})
 

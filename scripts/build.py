@@ -83,7 +83,7 @@ def main():
         (runtime / "BROWSER-TERMS.html").write_text(page.content(), encoding="utf-8")
         browser.close()
 
-    versions = {"application": "1.0.0", "node": NODE_VERSION, "opencli": "1.8.6",
+    versions = {"application": json.loads((ROOT / "package.json").read_text())["version"], "node": NODE_VERSION, "opencli": "1.8.6",
                 "browser_bridge": "1.0.24", "playwright_build": "1.62.0", "platform": label,
                 "python": platform.python_version(), "node_archive_sha256": expected}
     (bundle / "VERSIONS.json").write_text(json.dumps(versions, indent=2), encoding="utf-8")

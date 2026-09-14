@@ -176,5 +176,6 @@
       "ready_text": "应聘记录",
       "content_pattern": "官网投递"
     }
-  ]
+  ],
+  "concurrency": 4
 }

@@ -10,6 +10,7 @@ import uuid
 FROZEN = getattr(sys, "frozen", False)
 ROOT = Path(sys.executable).resolve().parent if FROZEN else Path(__file__).resolve().parent
 ASSETS = ROOT
+VERSION = json.loads((ROOT / ('VERSIONS.json' if FROZEN else 'package.json')).read_text(encoding='utf-8')).get('application' if FROZEN else 'version', 'unknown')
 
 
 def user_directory():

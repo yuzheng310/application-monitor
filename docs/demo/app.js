@@ -1,6 +1,9 @@
  'use strict';
 const $ = id => document.getElementById(id);
 let state=null,requesting=false,timer=null,previousList='';
+let requestError='';
+const formatDuration=value=>value>=60?`${Math.floor(value/60)}分${Math.round(value%60)}秒`:`${Math.round(value)}秒`;
+function requestMessage(message){requestError=message;$('requestError').textContent=message;$('requestError').hidden=!message;}
 function timeLabel(value,full=false){if(!value)return '尚未查询';const d=new Date(value);if(Number.isNaN(d.valueOf()))return '时间未知';return new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',...(full?{month:'2-digit',day:'2-digit'}:{}),hour:'2-digit',minute:'2-digit',hour12:false}).format(d);}
 function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text)e.textContent=text;return e;}
 function render(){
@@ -9,15 +12,21 @@ function render(){
  $('overview').textContent=sites.length+' 家公司 · '+rows.length+' 条岗位记录';
  const last=sites.map(s=>s.checked_at).filter(Boolean).sort().at(-1);
  $('lastTime').textContent='最近检查 '+timeLabel(last,true);
- $('schedule').textContent=state.automation.enabled?'每天 '+state.times.join(' / ')+' 自动检查':'公开演示 · 全部数据均为虚构示例';
+ $('schedule').textContent=state.automation.enabled?'每天 '+state.times.join(' / ')+' 自动检查':'v1.1 公开演示 · 示例数据';
  $('refresh').disabled=state.running||requesting;
+ $('workers').disabled=state.running||requesting;
+ $('retryFailed').disabled=state.running||requesting;
  $('refresh').textContent=state.running||requesting?'正在查询…':'下载后查询自己的记录 ↗';
  $('runText').textContent=state.running?(p.current?'正在查询 '+p.current:'正在启动查询…'):state.interrupted?'上次查询中断，可重新查询':'已显示最近一次查询结果';
- $('runCount').textContent=state.running?`${p.completed||0} / ${p.total||sites.length}`:'';
+ $('runCount').textContent=p.total?`${p.completed||0} / ${p.total}`:'';
+ const elapsed=state.running&&p.started_at?(Date.now()-new Date(p.started_at).valueOf())/1000:p.elapsed_seconds;
+ $('runStats').textContent=elapsed!=null?`${state.running?'已用时':'上次查询用时'} ${formatDuration(Math.max(0,elapsed))} · 并发 ${p.concurrency||4} 家`:'';
  $('runProgress').hidden=!state.running;$('runProgress').max=p.total||sites.length||1;$('runProgress').value=p.completed||0;
  const failed=sites.filter(s=>s.stale).length;
- $('notice').textContent=failed?`${failed} 家读取失败，旧记录已标为“上次结果”，请查看对应提示。`:state.running?'每完成一家，页面会自动更新。':'以下是虚构示例；真实查询在你下载的本地软件中完成。';
- const key=JSON.stringify(sites);
+ $('retryFailed').hidden=!failed;$('retryFailed').textContent=`仅重试失败的 ${failed} 家`;
+ if(state.batch_error)requestMessage(state.batch_error.error+'。'+(state.batch_error.suggestion||''));
+ $('notice').textContent=failed?`${failed} 家未能读取，请按各公司的提示处理后重试；已有的成功记录会保留。`:state.running?'每完成一家，页面会自动更新。':'首次使用：点击各公司官网完成登录，再查询。请保持内置浏览器打开。';
+ const key=JSON.stringify([sites,state.running,requesting]);
  if(key===previousList)return;previousList=key;
  const groups=document.createDocumentFragment(),summary=document.createDocumentFragment();
  const counts=[['interview','面试中'],['written','笔试 / 测评'],['screening','筛选中'],['applied','已投递'],['waiting','待开启'],['other','待确认'],['ended','已结束']];
@@ -31,8 +40,12 @@ function render(){
   const section=el('section','company-block');section.id='company-'+s.id;
   const heading=el('div','company-heading'),name=el('div','company-name');name.append(el('h2','',s.company),el('span','',apps.length+' 个岗位'));
   if(s.status==='内容变化')name.append(el('span','changed','记录有更新'));
-  const source=el('a','','官网 ↗');source.href=s.url;source.target='_blank';source.rel='noopener noreferrer';heading.append(name,source);section.append(heading);
-  if(s.error)section.append(el('div','error',s.error+(s.text?' · 下方为上次成功读取的进度':'')));
+  const actions=el('div','company-actions');
+  if(s.query_state==='running'||s.query_state==='pending')actions.append(el('span','query-badge',s.query_state==='running'?'查询中…':'等待查询'));
+  const retry=el('button','site-retry',s.stale?'重试此公司':'查询此公司');retry.disabled=state.running||requesting;retry.dataset.siteId=s.id;retry.addEventListener('click',()=>queryAll([s.id]).catch(showRequestError));actions.append(retry);
+  const source=el('a','','官网 ↗');source.href=s.url;source.target='_blank';source.rel='noopener noreferrer';actions.append(source);heading.append(name,actions);section.append(heading);
+  if(s.error){const error=el('div','error');error.append(el('strong','',s.error),el('p','',s.suggestion||'打开官网确认登录和页面状态后，重试此公司。'));
+   error.append(el('small','',`${s.error_code||'READ_ERROR'} · ${s.text?'保留上次成功结果':'尚无成功记录'}`));section.append(error);}
   if(!apps.length)section.append(el('p','empty',s.status==='尚未查询'?'点击官网在内置浏览器登录，然后点击一键查询全部。':'暂未读取到岗位记录，请在官网确认登录状态。'));
   for(const a of apps){
    const card=el('article','job '+a.group),head=el('div','job-heading');
@@ -58,11 +71,15 @@ function render(){
 }
 async function load() {
   const response=await fetch('demo.json',{cache:'no-store'});
-  if(!response.ok)throw new Error('本地服务暂时无法读取记录');
-  state=await response.json();render();return state;
+  if(!response.ok){let data={};try{data=await response.json();}catch{}throw new Error([data.error||'本地服务暂时无法读取记录',data.suggestion].filter(Boolean).join('。'));}
+  const first=state===null;state=await response.json();
+  if(first){const value=String(state.concurrency||4);if(![...$('workers').options].some(o=>o.value===value)){const option=el('option','',value+' 家');option.value=value;$('workers').append(option);}$('workers').value=value;}
+  render();return state;
 }
 async function queryAll(){window.location.href='../#download';return {started:false};}
-function showError(error){$('runText').textContent=error.message||'无法连接本地服务';$('notice').textContent='请确认本地网页服务正在运行，然后刷新页面。';$('refresh').disabled=true;}
-$('refresh').addEventListener('click',()=>queryAll().catch(showError));
+function showRequestError(error){requestMessage(error.message==='Failed to fetch'?'无法连接本地服务，请重新双击启动软件后重试。':error.message||'查询未能启动，请重试。');}
+function showError(error){$('runText').textContent='无法读取本地服务状态';$('notice').textContent=error.message==='Failed to fetch'?'服务可能已退出，请重新双击启动软件。页面会自动尝试恢复连接。':error.message;$('refresh').disabled=true;}
+$('refresh').addEventListener('click',()=>queryAll().catch(showRequestError));
+$('retryFailed').addEventListener('click',()=>queryAll(state.sites.filter(s=>s.stale).map(s=>s.id)).catch(showRequestError));
 async function poll(){try{await load();}catch(error){showError(error);}timer=setTimeout(poll,state?.running?1800:8000);}
 poll();
