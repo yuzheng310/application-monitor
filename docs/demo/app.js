@@ -6,6 +6,23 @@ const formatDuration=value=>value>=60?`${Math.floor(value/60)}分${Math.round(va
 function requestMessage(message){requestError=message;$('requestError').textContent=message;$('requestError').hidden=!message;}
 function timeLabel(value,full=false){if(!value)return '尚未查询';const d=new Date(value);if(Number.isNaN(d.valueOf()))return '时间未知';return new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',...(full?{month:'2-digit',day:'2-digit'}:{}),hour:'2-digit',minute:'2-digit',hour12:false}).format(d);}
 function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text)e.textContent=text;return e;}
+
+let navigationFrame=null;
+function updateCompanyNavigation(){
+ navigationFrame=null;
+ const sections=[...document.querySelectorAll('.company-block')];
+ let current=sections[0];
+ for(const section of sections){if(section.getBoundingClientRect().top<=120)current=section;else break;}
+ if(window.scrollY>0&&window.scrollY+window.innerHeight>=document.documentElement.scrollHeight-2)current=sections.at(-1);
+ for(const link of $('companyNav').children){
+  if(current&&link.hash==='#'+current.id)link.setAttribute('aria-current','location');
+  else link.removeAttribute('aria-current');
+ }
+}
+function scheduleCompanyNavigation(){if(navigationFrame===null)navigationFrame=requestAnimationFrame(updateCompanyNavigation);}
+window.addEventListener('scroll',scheduleCompanyNavigation,{passive:true});
+window.addEventListener('resize',scheduleCompanyNavigation);
+
 function render(){
  const sites=state.sites,p=state.progress;
  const rows=sites.flatMap(s=>(s.applications||[]).filter(a=>!a.internship).map(a=>({...a,site:s,group:s.stale?'other':a.group})));
@@ -35,9 +52,13 @@ function render(){
    const rank=s=>Math.min(...rows.filter(r=>r.site.id===s.id).map(r=>counts.findIndex(c=>c[0]===r.group)),99);
    return Number(b.status==='内容变化')-Number(a.status==='内容变化') || rank(a)-rank(b);
  });
+ const navigation=document.createDocumentFragment();
  for(const s of ordered){
+  const link=el('a','');link.href='#company-'+s.id;link.append(el('span','',s.company));
+  if(s.status==='内容变化')link.append(el('span','nav-update','更新'));
+  navigation.append(link);
   const apps=rows.filter(a=>a.site.id===s.id);
-  const section=el('section','company-block');section.id='company-'+s.id;
+  const section=el('section','company-block');section.id='company-'+s.id;section.tabIndex=-1;
   const heading=el('div','company-heading'),name=el('div','company-name');name.append(el('h2','',s.company),el('span','',apps.length+' 个岗位'));
   if(s.status==='内容变化')name.append(el('span','changed','记录有更新'));
   const actions=el('div','company-actions');
@@ -68,6 +89,7 @@ function render(){
   const raw=el('details');raw.append(el('summary','','核对官网原始记录'),el('pre','',s.text||'暂无记录'));if(s.diff)raw.append(el('p','','本次变化'),el('pre','',s.diff));bottom.append(raw);section.append(bottom);groups.append(section);
  }
  $('summary').replaceChildren(summary);$('groups').replaceChildren(groups);
+ $('companyNav').replaceChildren(navigation);scheduleCompanyNavigation();
 }
 async function load() {
   const response=await fetch('demo.json',{cache:'no-store'});
