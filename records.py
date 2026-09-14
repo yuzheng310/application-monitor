@@ -64,9 +64,26 @@ def parse_records(site_id, text):
             m=re.fullmatch(r'(.+?) ('+DATE+r') \d+',x)
             if m and i and i+1<len(lines): add(lines[i-1],lines[i+1],'\n'.join(lines[i:i+next((n for n,y in enumerate(lines[i+1:],1) if re.fullmatch(r'.+ '+DATE+r' \d+',y)),len(lines)-i)]),department=m.group(1),note='笔试、测评已完成' if lines[i+1]=='新投递' and '笔试\n已完成' in main and '测评\n已完成' in main else '')
     elif site_id=='alibaba':
+        # Completed applications omit both the recruitment batch and status
+        # columns. Their section heading is the evidence that they have ended.
+        finished=False
+        rows=[]
+        headers={'职位','所属部门','申请日期','申请编号','当前状态','操作'}
         for i,x in enumerate(lines):
-            if i>=3 and i+2<len(lines) and re.fullmatch(DATE,x) and lines[i+1].isdigit():
-                add(lines[i-3],lines[i+2],'\n'.join(lines[i:i+next((n for n,y in enumerate(lines[i+1:],1) if y=='职位'),len(lines)-i)]),department=lines[i-1])
+            if x=='已完成的流程': finished=True
+            elif x=='进行中的流程': finished=False
+            if not re.fullmatch(DATE,x) or i+1>=len(lines) or not lines[i+1].isdigit():
+                continue
+            start=i-(2 if finished else 3)
+            if start<0 or lines[start] in headers:
+                continue
+            status='已结束' if finished else lines[i+2] if i+2<len(lines) else ''
+            rows.append((start,i,status,finished))
+        for n,(start,i,status,finished) in enumerate(rows):
+            end=rows[n+1][0] if n+1<len(rows) else len(lines)
+            end=next((j for j in range(i+2,end) if lines[j] in ('职位','已完成的流程','进行中的流程')),end)
+            add(lines[start],status,'\n'.join(lines[i:end]),department=lines[i-1],
+                note='官网归入已完成的流程，未显示具体结束原因' if finished else '')
     elif site_id=='xiaohongshu':
         starts=[i for i,x in enumerate(lines) if x.startswith('【') and i+1<len(lines) and lines[i+1].startswith('志愿')]
         for (title,b),idx in zip(segments(starts),starts):
