@@ -44,7 +44,8 @@ def cli(config, site, *args, timeout=50):
     if profile:
         command += ["--profile", profile]
     command += ["browser", "applications-" + site["id"] + config.get("_session_suffix", "")]
-    options = dict(capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout, **runtime.child_options())
+    options = dict(capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout,
+                   env=dict(os.environ, OPENCLI_WINDOW="background"), **runtime.child_options())
     # OpenCLI shares a background window. Hidden tabs may never render their
     # application list. Keep activation and the read/click in one browser turn;
     # network loading and polling waits still overlap across company workers.

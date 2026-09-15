@@ -11,6 +11,8 @@ class BrowserVisibilityTest(unittest.TestCase):
         with patch.object(monitor.runtime,'opencli_command',return_value=['opencli']),patch.object(monitor.runtime,'browser_profile',return_value=None),patch.object(monitor.subprocess,'run',return_value=ok) as run,patch.object(monitor.time,'sleep'):
             monitor.cli({'_page':'owned-page'},{'id':'demo'},'eval','document.visibilityState')
         self.assertEqual(len(run.call_args_list),2)
+        for call in run.call_args_list:
+            self.assertEqual(call.kwargs.get('env',{}).get('OPENCLI_WINDOW'),'background')
         self.assertEqual(run.call_args_list[0].args[0][-3:],['tab','select','owned-page'])
         self.assertEqual(run.call_args_list[1].args[0][-2:],['eval','document.visibilityState'])
 
