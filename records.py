@@ -50,6 +50,15 @@ def parse_records(site_id, text):
         for title,b in segments([i-1 for i,x in enumerate(lines) if i and x=='变更职位']):
             m=re.search(re.escape(title)+r'：([^\n]+)',current)
             add(title,'已结束' if '已结束' in b else m.group(1) if m else '流程中','\n'.join(b),field(b,'意向地点'))
+    elif site_id=='shopee':
+        for pref,b in segments([i for i,x in enumerate(lines) if re.fullmatch(r'第\s*\d+\s*志愿',x)]):
+            if len(b)<2: continue
+            title=b[1]
+            match=re.search(re.escape(title)+r'：([^\n]+)',current)
+            status=match.group(1).strip() if match else ''
+            add(title,status,'\n'.join(b),preference=pref)
+            if status in ('初试','复试','加面'):
+                records[-1]['group']='interview'
     elif site_id=='didi':
         for title,b in segments([i-1 for i,x in enumerate(lines) if i and x in ('修改申请','查看详情')]):
             add(title,field(b,'状态'),'\n'.join(b),department=field(b,'职位一级部门名称'))
@@ -116,7 +125,7 @@ def parse_records(site_id, text):
 # Stage names must be present in this job's source; no generic invented funnel.
 STAGES = {'投递简历','简历投递','投递','投递成功','简历筛选','简历评估','评估','测评','笔试','笔试/测评',
           'AI面试','用人部门筛选','部门筛选','HR初筛','初筛','面试','一面','二面','三面','HR面','HR面试',
-          '技术面试','业务面试','录用评估','Offer','offer','意向书','入职','预入职','等待筛选结果'}
+          '笔试阶段','初试','复试','加面','技术面试','业务面试','录用评估','Offer','offer','意向书','入职','预入职','等待筛选结果'}
 
 def progress_details(site_id, title, status, block, current):
     lines=[s.strip() for s in block.splitlines() if s.strip()]

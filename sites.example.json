@@ -191,6 +191,19 @@
       "selector": "div:has(> [data-test=\"applicationListItem\"])",
       "ready_text": "应聘记录",
       "content_pattern": "官网投递"
+    },
+    {
+      "id": "shopee",
+      "name": "Shopee",
+      "url": "https://app.mokahr.com/campus_apply/shopee/2962#/candidateHome/applications",
+      "selector": "[class^=\"position-block-\"]",
+      "ready_text": "投递记录",
+      "content_pattern": "第\\s*\\d+\\s*志愿",
+      "progress": {
+        "row": "[class^=\"preference-\"]:not([class^=\"preference-top-\"]):not([class^=\"preference-bottom-\"]):not([class^=\"preference-icon-\"])",
+        "title": "[class*=\"font-style-\"]",
+        "current": "[class^=\"flow-box-\"]:has([class*=\"flow-box-processing-\"]) [class^=\"flow-box-name-\"]"
+      }
     }
   ],
   "concurrency": 4
