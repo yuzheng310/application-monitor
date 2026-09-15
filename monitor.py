@@ -143,17 +143,24 @@ def prepare_page(config, site):
 def check_site(config, site):
     if not site.get("selector") or not site.get("ready_text"):
         raise CheckError('CONFIG_ERROR')
-    # OpenCLI intentionally reuses an already-loaded URL; a fresh owned lease
-    # ensures every check actually reloads the website without touching user tabs.
-    config = dict(config, _session_suffix="-" + uuid.uuid4().hex[:12])
-    cli(config, site, "open", site["url"], "--window", "background")
-    try:
-        return read_stable_site(config, site)
-    finally:
+    # A loaded but stalled page can fail validation despite valid site rules.
+    # Reopen once in a fresh owned session; never reuse or close user tabs.
+    for attempt in range(2):
+        session = dict(config, _session_suffix="-" + uuid.uuid4().hex[:12])
         try:
-            cli(config, site, "close", timeout=5)
-        except Exception:
-            pass  # Cleanup failure must not discard a successful record.
+            cli(session, site, "open", site["url"], "--window", "background")
+            return read_stable_site(session, site)
+        except CheckError as error:
+            if attempt or error.code not in {'SITE_CHANGED', 'PAGE_LOADING', 'TIMEOUT', 'NETWORK_ERROR'}:
+                raise
+        except subprocess.TimeoutExpired:
+            if attempt:
+                raise
+        finally:
+            try:
+                cli(session, site, "close", timeout=5)
+            except Exception:
+                pass  # Cleanup failure must not discard a successful record.
 
 
 def read_stable_site(config, site):
