@@ -50,6 +50,12 @@ def parse_records(site_id, text):
         for title,b in segments([i-1 for i,x in enumerate(lines) if i and x=='变更职位']):
             m=re.search(re.escape(title)+r'：([^\n]+)',current)
             add(title,'已结束' if '已结束' in b else m.group(1) if m else '流程中','\n'.join(b),field(b,'意向地点'))
+    elif site_id=='catl':
+        for pref,b in segments([i for i,x in enumerate(lines) if re.fullmatch(r'第\s*\d+\s*志愿',x)]):
+            if len(b)<2: continue
+            add(b[1],field(b,'状态'),'\n'.join(b),department=field(b,'职位部门名称'),
+                preference=pref,note='官网仅展示状态文字，未公开具体流程阶段')
+            records[-1]['steps']=[]
     elif site_id=='shopee':
         for pref,b in segments([i for i,x in enumerate(lines) if re.fullmatch(r'第\s*\d+\s*志愿',x)]):
             if len(b)<2: continue

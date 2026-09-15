@@ -204,6 +204,14 @@
         "title": "[class*=\"font-style-\"]",
         "current": "[class^=\"flow-box-\"]:has([class*=\"flow-box-processing-\"]) [class^=\"flow-box-name-\"]"
       }
+    },
+    {
+      "id": "catl",
+      "name": "宁德时代（CATL）",
+      "url": "https://app.mokahr.com/campus-recruitment/catlhr/148948#/candidateHome/applications",
+      "selector": "[class^=\"position-block-\"]",
+      "ready_text": "投递记录",
+      "content_pattern": "状态[:：]"
     }
   ],
   "concurrency": 4
