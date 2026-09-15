@@ -76,12 +76,27 @@ def read_page(config, site):
           return [...row.querySelectorAll(progress.current)].filter(visible)
             .map(e => (title || '当前流程') + '：' + e.innerText.trim());
         }) : [];
+      const table = TABLE_RECORDS;
+      let text = nodes.map(e => e.innerText).join('\\n');
+      if (table) {
+        text = nodes.flatMap(container => [...container.querySelectorAll(table.row)]).filter(visible).flatMap(row => {
+          const date = row.querySelector(table.date)?.innerText.trim() || '';
+          const detail = row.nextElementSibling;
+          const status = detail?.querySelector(table.status)?.innerText.replace(/^当前状态[：:]\\s*/, '').trim() || '';
+          if (!status) return [];
+          return table.titles.flatMap(column => {
+            const title = row.querySelector(column.selector)?.innerText.trim();
+            if (!title || ['-', '—', '暂无', '未填写'].includes(title)) return [];
+            return ['岗位记录\\n职位：'+title+'\\n志愿：'+column.preference+'\\n投递时间：'+date+'\\n当前状态：'+status];
+          });
+        }).join('\\n');
+      }
       return {url: location.origin + location.pathname + location.hash,
         title: document.title,
         ready_found: body.includes(READY),
         auth_required: /获取验证码|短信验证码|扫码登录|安全验证|请完成验证/.test(body),
-        count: nodes.length, text: nodes.map(e => e.innerText).join('\\n'), extra};
-    })()""".replace("SELECTOR", selector).replace("PROGRESS", json.dumps(site.get("progress"))).replace("READY", json.dumps(site.get("ready_text") or ""))
+        count: nodes.length, text, extra};
+    })()""".replace("TABLE_RECORDS", json.dumps(site.get("table_records"))).replace("SELECTOR", selector).replace("PROGRESS", json.dumps(site.get("progress"))).replace("READY", json.dumps(site.get("ready_text") or ""))
     raw = cli(config, site, "eval", script)
     try:
         value = json.loads(raw)

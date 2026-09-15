@@ -212,6 +212,29 @@
       "selector": "[class^=\"position-block-\"]",
       "ready_text": "投递记录",
       "content_pattern": "状态[:：]"
+    },
+    {
+      "id": "pdd",
+      "name": "拼多多集团（PDD）",
+      "url": "https://careers.pddglobalhr.com/campus/personal-center",
+      "selector": "[class^=\"index_posts__\"]",
+      "ready_text": "应聘状态",
+      "content_pattern": "岗位记录",
+      "table_records": {
+        "row": "tr.rocket-table-row-level-0",
+        "titles": [
+          {
+            "selector": "td:nth-child(2)",
+            "preference": "志愿一"
+          },
+          {
+            "selector": "td:nth-child(3)",
+            "preference": "志愿二"
+          }
+        ],
+        "date": "td:nth-child(4)",
+        "status": "[class^=\"index_status__\"]"
+      }
     }
   ],
   "concurrency": 4

@@ -50,6 +50,13 @@ def parse_records(site_id, text):
         for title,b in segments([i-1 for i,x in enumerate(lines) if i and x=='变更职位']):
             m=re.search(re.escape(title)+r'：([^\n]+)',current)
             add(title,'已结束' if '已结束' in b else m.group(1) if m else '流程中','\n'.join(b),field(b,'意向地点'))
+    elif site_id=='pdd':
+        for _,b in segments([i for i,x in enumerate(lines) if x=='岗位记录']):
+            title=field(b,'职位')
+            if not title: continue
+            add(title,field(b,'当前状态'),'\n'.join(b),preference=field(b,'志愿'),
+                note='官网按校招项目显示共同状态，未细分每个志愿的流程阶段')
+            records[-1]['steps']=[]
     elif site_id=='catl':
         for pref,b in segments([i for i,x in enumerate(lines) if re.fullmatch(r'第\s*\d+\s*志愿',x)]):
             if len(b)<2: continue
