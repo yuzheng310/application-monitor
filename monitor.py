@@ -12,10 +12,13 @@ from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from check_errors import CheckError, cli_error, details
 import subprocess
 import uuid
+import threading
 import time
 from datetime import datetime, timedelta
 from urllib.parse import urlsplit
 from datetime import timezone
+
+BROWSER_TURN = threading.RLock()
 
 ROOT = runtime.ROOT
 DATA = runtime.DATA
@@ -40,8 +43,18 @@ def cli(config, site, *args, timeout=50):
     profile = config.get("profile") or runtime.browser_profile()
     if profile:
         command += ["--profile", profile]
-    command += ["browser", "applications-" + site["id"] + config.get("_session_suffix", ""), *args]
-    result = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout, **runtime.child_options())
+    command += ["browser", "applications-" + site["id"] + config.get("_session_suffix", "")]
+    options = dict(capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout, **runtime.child_options())
+    # OpenCLI shares a background window. Hidden tabs may never render their
+    # application list. Keep activation and the read/click in one browser turn;
+    # network loading and polling waits still overlap across company workers.
+    with BROWSER_TURN:
+        if config.get("_page") and args and args[0] in ("eval", "click", "state"):
+            selected = subprocess.run(command + ["tab", "select", config["_page"]], **options)
+            if selected.returncode:
+                raise cli_error(selected.stderr or selected.stdout)
+            time.sleep(0.15)  # Allow visibility handlers and animation frames to run.
+        result = subprocess.run(command + list(args), **options)
     if result.returncode:
         # 原始错误可能含带令牌的 URL，不保存到结果中。
         raise cli_error(result.stderr or result.stdout)
@@ -148,7 +161,15 @@ def check_site(config, site):
     for attempt in range(2):
         session = dict(config, _session_suffix="-" + uuid.uuid4().hex[:12])
         try:
-            cli(session, site, "open", site["url"], "--window", "background")
+            opened = cli(session, site, "open", site["url"], "--window", "background")
+            if isinstance(opened, str):
+                try:
+                    page = json.loads(opened)["page"]
+                    if not isinstance(page, str) or not page:
+                        raise ValueError()
+                    session["_page"] = page
+                except (ValueError, KeyError, TypeError):
+                    raise CheckError('INVALID_RESPONSE')
             return read_stable_site(session, site)
         except CheckError as error:
             if attempt or error.code not in {'SITE_CHANGED', 'PAGE_LOADING', 'TIMEOUT', 'NETWORK_ERROR'}:
