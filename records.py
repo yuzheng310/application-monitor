@@ -50,6 +50,22 @@ def parse_records(site_id, text):
         for title,b in segments([i-1 for i,x in enumerate(lines) if i and x=='变更职位']):
             m=re.search(re.escape(title)+r'：([^\n]+)',current)
             add(title,'已结束' if '已结束' in b else m.group(1) if m else '流程中','\n'.join(b),field(b,'意向地点'))
+    elif site_id=='microsoft':
+        months={name:n for n,name in enumerate(('jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'),1)}
+        for _,b in segments([i for i,x in enumerate(lines) if x=='岗位记录']):
+            title=field(b,'职位')
+            if not title: continue
+            status=field(b,'当前状态')
+            add(title,status,'\n'.join(b),note='保留官网英文状态；仅显示当前申请列表，处理中不代表进入面试')
+            record=records[-1]
+            record['group']={'submitted':'applied','application processing':'other',
+                'not selected':'ended','withdrawn':'ended','inactive':'ended'}.get(status.lower(),'other')
+            record['steps']=[]
+            match=re.search(r'([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})',field(b,'投递时间'))
+            if match and match[1][:3].lower() in months:
+                from datetime import date
+                try:record['applied_at']=date(int(match[3]),months[match[1][:3].lower()],int(match[2])).isoformat()
+                except ValueError:pass
     elif site_id=='pdd':
         for _,b in segments([i for i,x in enumerate(lines) if x=='岗位记录']):
             title=field(b,'职位')

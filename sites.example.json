@@ -235,6 +235,26 @@
         "date": "td:nth-child(4)",
         "status": "[class^=\"index_status__\"]"
       }
+    },
+    {
+      "id": "microsoft",
+      "name": "微软（Microsoft）",
+      "url": "https://apply.careers.microsoft.com/careers/applications?domain=microsoft.com",
+      "selector": "body",
+      "ready_text": "Keep track of all your job applications",
+      "content_pattern": "岗位记录",
+      "table_records": {
+        "row": "[class*=\" container-\"]:has(> [class*=\"headingcontainer-\"])",
+        "titles": [
+          {
+            "selector": "[data-test-class=\"list-item-card-heading-title\"] a",
+            "preference": ""
+          }
+        ],
+        "date": "[class*=\"subcontainer-\"] [class^=\"subtext-\"]",
+        "status": "[class^=\"status-\"]",
+        "status_in_row": true
+      }
     }
   ],
   "concurrency": 4

@@ -81,7 +81,7 @@ def read_page(config, site):
       if (table) {
         text = nodes.flatMap(container => [...container.querySelectorAll(table.row)]).filter(visible).flatMap(row => {
           const date = row.querySelector(table.date)?.innerText.trim() || '';
-          const detail = row.nextElementSibling;
+          const detail = table.status_in_row ? row : row.nextElementSibling;
           const status = detail?.querySelector(table.status)?.innerText.replace(/^当前状态[：:]\\s*/, '').trim() || '';
           if (!status) return [];
           return table.titles.flatMap(column => {
