@@ -255,6 +255,33 @@
         "status": "[class^=\"status-\"]",
         "status_in_row": true
       }
+    },
+    {
+      "id": "sf",
+      "name": "顺丰",
+      "url": "https://campus.sf-express.com/#/personalCenter",
+      "selector": ".dynamic-wrapper",
+      "ready_text": "应聘动态",
+      "content_pattern": "岗位记录",
+      "read_steps": [
+        {
+          "selector": "#tab-applyStatus",
+          "done_selector": "#pane-applyStatus"
+        }
+      ],
+      "table_records": {
+        "row": ".sub-block",
+        "titles": [
+          {
+            "selector": ".position-name",
+            "preference": ""
+          }
+        ],
+        "date": ".r-time",
+        "status": ".status-dot.current",
+        "status_in_row": true,
+        "stages": ".status-dot"
+      }
     }
   ],
   "concurrency": 4

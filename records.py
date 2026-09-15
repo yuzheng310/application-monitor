@@ -50,6 +50,22 @@ def parse_records(site_id, text):
         for title,b in segments([i-1 for i,x in enumerate(lines) if i and x=='变更职位']):
             m=re.search(re.escape(title)+r'：([^\n]+)',current)
             add(title,'已结束' if '已结束' in b else m.group(1) if m else '流程中','\n'.join(b),field(b,'意向地点'))
+    elif site_id=='sf':
+        labels=('网申','初试','复试','终试','offer','Offer','待入职','成功入职')
+        for _,b in segments([i for i,x in enumerate(lines) if x=='岗位记录']):
+            title=field(b,'职位')
+            if not title: continue
+            status=field(b,'当前状态')
+            add(title,status,'\n'.join(b))
+            record=records[-1]
+            record['group']={'网申':'applied','初试':'interview','复试':'interview','终试':'interview',
+                             '成功入职':'ended'}.get(status,'other')
+            stages=list(dict.fromkeys('Offer' if x=='offer' else x for x in b if x in labels))
+            active=stages.index('Offer' if status=='offer' else status) if ('Offer' if status=='offer' else status) in stages else None
+            record['steps']=[dict(label=label,date='',state='current' if i==active else
+                'future' if active is not None and i>active else 'unknown') for i,label in enumerate(stages)]
+            record['pipeline_complete']='成功入职' in stages
+            record['pipeline_note']='仅高亮阶段代表当前进度，之前阶段的完成情况未单独公开'
     elif site_id=='microsoft':
         months={name:n for n,name in enumerate(('jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'),1)}
         for _,b in segments([i for i,x in enumerate(lines) if x=='岗位记录']):

@@ -84,10 +84,11 @@ def read_page(config, site):
           const detail = table.status_in_row ? row : row.nextElementSibling;
           const status = detail?.querySelector(table.status)?.innerText.replace(/^当前状态[：:]\\s*/, '').trim() || '';
           if (!status) return [];
+          const stages = table.stages ? [...row.querySelectorAll(table.stages)].filter(visible).map(e => e.innerText.trim()).join('\\n') : '';
           return table.titles.flatMap(column => {
             const title = row.querySelector(column.selector)?.innerText.trim();
             if (!title || ['-', '—', '暂无', '未填写'].includes(title)) return [];
-            return ['岗位记录\\n职位：'+title+'\\n志愿：'+column.preference+'\\n投递时间：'+date+'\\n当前状态：'+status];
+            return ['岗位记录\\n职位：'+title+'\\n志愿：'+column.preference+'\\n投递时间：'+date+'\\n当前状态：'+status+(stages ? '\\n'+stages : '')];
           });
         }).join('\\n');
       }
