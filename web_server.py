@@ -92,11 +92,12 @@ class Dashboard:
             sites.append(result)
         interrupted = not running and progress.get("status") == "running"
         batch_error = {k: progress.get(k) for k in ('error', 'error_code', 'suggestion')} if progress.get('status') == 'failed' else None
+        batch_changes = [{"id": r.get("id"), "company": r.get("company"), "checked_at": r.get("checked_at"), "changes": r.get("changes", []), "status": r.get("status"), "summarized": "changes" in r} for r in progress.get("results", [])]
         progress = {k: progress.get(k) for k in ("started_at", "finished_at", "current", "completed", "total", "active", "pending", "concurrency", "elapsed_seconds")}
         if not running:
             progress["current"] = None
         return {"groups": GROUPS, "app": "application-monitor-public", "version": runtime.VERSION, "instance": runtime.browser_profile(), "sites": sites, "running": running, "progress": progress,
-                "interrupted": interrupted, "batch_error": batch_error, "concurrency": config.get('concurrency', 4), "times": config.get("times", []),
+                "interrupted": interrupted, "batch_error": batch_error, "batch_changes": batch_changes, "concurrency": config.get('concurrency', 4), "times": config.get("times", []),
                 "automation": read_json(DATA / "automation.json", {"enabled": False}),
                 "csrf_token": self.token}
 

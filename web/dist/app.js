@@ -24,6 +24,29 @@ function scheduleCompanyNavigation(){if(navigationFrame===null)navigationFrame=r
 window.addEventListener('scroll',scheduleCompanyNavigation,{passive:true});
 window.addEventListener('resize',scheduleCompanyNavigation);
 
+function changeList(changes){
+ const list=el('ul','change-list');
+ for(const change of changes){const item=el('li','change-'+change.kind);item.append(el('strong','',change.title),el('span','change-message',change.message));if(change.context)item.append(el('small','',change.context));list.append(item);}
+ return list;
+}
+let previousChangeSummary='';
+function renderChanges(){
+ const panel=$('changeSummary'),batch=state.batch_changes||[],updates=batch.filter(r=>r.status!=='检查失败'&&r.changes?.length);
+ const summaryKey=JSON.stringify([batch,state.running,state.progress.started_at,state.interrupted,state.batch_error]);
+ if(summaryKey===previousChangeSummary)return;previousChangeSummary=summaryKey;
+ panel.hidden=!batch.length;if(!batch.length)return;
+ const content=document.createDocumentFragment();
+ content.append(el('h2','',state.running?'本次查询 · 变化摘要':'最近一次查询 · 变化摘要'),el('p','calendar-hint',timeLabel(state.progress.started_at,true)+(state.running?' · 查询进行中，结果逐家更新':'')));
+ if(updates.length){content.append(el('p','',`${updates.length} 家公司有岗位变化`));for(const result of updates){const section=el('div','change-company');const link=el('a','',result.company+' ↗');link.href='#company-'+result.id;section.append(link,changeList(result.changes));content.append(section);}}
+ else content.append(el('p','',batch.some(r=>r.status!=='检查失败'&&!r.summarized)?'此前的查询尚未生成岗位变化摘要，下次查询起会显示详细变化。':state.running?'暂未发现岗位变化，正在继续查询。':'本次未发现可明确识别的岗位进度变化。'));
+ const initial=batch.filter(r=>r.status==='首次记录').length,failed=batch.filter(r=>r.status==='检查失败').length;
+ const unclassified=batch.filter(r=>r.status==='内容变化'&&!r.changes?.length).length;
+ if(initial)content.append(el('p','calendar-hint',`${initial} 家首次读取，已建立基准，不计为进度更新。`));
+ if(failed)content.append(el('p','calendar-hint',`${failed} 家查询失败，无法判断是否有变化，已保留上次结果。`));
+ if(unclassified)content.append(el('p','calendar-hint',`${unclassified} 家网页内容有变化，但未识别出明确的岗位变化，可展开官网原始记录核对。`));
+ if(state.interrupted||state.batch_error)content.append(el('p','calendar-hint','本次查询未完整结束，以上仅汇总已返回的公司。'));
+ panel.replaceChildren(content);
+}
 function render(){
  const sites=state.sites,p=state.progress;
  const rows=sites.flatMap(s=>(s.applications||[]).filter(a=>!a.internship).map(a=>({...a,site:s,group:s.stale?'other':a.group})));
@@ -44,6 +67,7 @@ function render(){
  $('retryFailed').hidden=!failed;$('retryFailed').textContent=`仅重试失败的 ${failed} 家`;
  if(state.batch_error)requestMessage(state.batch_error.error+'。'+(state.batch_error.suggestion||''));
  $('notice').textContent=failed?`${failed} 家未能读取，请按各公司的提示处理后重试；已有的成功记录会保留。`:state.running?'每完成一家，页面会自动更新。':'首次使用：点击各公司官网完成登录，再查询。请保持内置浏览器打开。';
+ renderChanges();
  const key=JSON.stringify([sites,state.running,requesting]);
  if(key===previousList)return;previousList=key;
  const groups=document.createDocumentFragment(),summary=document.createDocumentFragment();
@@ -66,6 +90,7 @@ function render(){
   if(s.query_state==='running'||s.query_state==='pending')actions.append(el('span','query-badge',s.query_state==='running'?'查询中…':'等待查询'));
   const retry=el('button','site-retry',s.stale?'重试此公司':'查询此公司');retry.disabled=state.running||requesting;retry.dataset.siteId=s.id;retry.addEventListener('click',()=>queryAll([s.id]).catch(showRequestError));actions.append(retry);
   const source=el('a','','官网 ↗');source.href=s.url;source.target='_blank';source.rel='noopener noreferrer';actions.append(source);heading.append(name,actions);section.append(heading);
+  if(s.changes?.length&&!s.stale){const updates=el('div','company-changes');updates.append(el('strong','','最近检查的变化 · '+timeLabel(s.checked_at,true)),changeList(s.changes));section.append(updates);}
   if(s.error){const error=el('div','error');error.append(el('strong','',s.error),el('p','',s.suggestion||'打开官网确认登录和页面状态后，重试此公司。'));
    error.append(el('small','',`${s.error_code||'READ_ERROR'} · ${s.text?'保留上次成功结果':'尚无成功记录'}`));section.append(error);}
   if(!apps.length)section.append(el('p','empty',s.status==='尚未查询'?'点击官网在内置浏览器登录，然后点击一键查询全部。':'暂未读取到岗位记录，请在官网确认登录状态。'));

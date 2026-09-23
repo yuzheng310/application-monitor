@@ -2,6 +2,7 @@
 """通过 OpenCLI 复用 Chrome 登录态；只读监控选定的投递记录区域。"""
 import argparse
 import difflib
+from application_changes import describe_changes
 import file_lock
 import runtime
 import json
@@ -238,6 +239,7 @@ def check_result(config, site, old):
         text = check_site(config, site)
         prior = old.get("text")
         result.update(status="首次记录" if prior is None else "内容变化" if prior != text else "无变化", text=text)
+        result["changes"] = describe_changes(site["id"], prior, text)
         if prior is not None and prior != text:
             result["diff"] = "\n".join(difflib.unified_diff(prior.splitlines(), text.splitlines(), fromfile="上次", tofile="本次", lineterm=""))
     except Exception as error:
