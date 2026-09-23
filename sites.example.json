@@ -282,6 +282,22 @@
         "status_in_row": true,
         "stages": ".status-dot"
       }
+    },
+    {
+      "id": "agirobot",
+      "name": "智元机器人（AGIBOT）",
+      "url": "https://agirobot.jobs.feishu.cn/campusrecruitment/position/application",
+      "selector": "div:has(> [data-test=\"applicationListItem\"])",
+      "ready_text": "应聘记录",
+      "content_pattern": "官网投递"
+    },
+    {
+      "id": "bambulab",
+      "name": "拓竹科技（Bambu Lab）",
+      "url": "https://bambulab.jobs.feishu.cn/campus/position/application",
+      "selector": "div:has(> [data-test=\"applicationListItem\"])",
+      "ready_text": "应聘记录",
+      "content_pattern": "官网投递"
     }
   ],
   "concurrency": 4
