@@ -62,7 +62,7 @@ class InterviewTracking:
                 source_key = hashlib.sha256(json.dumps(identity, ensure_ascii=False).encode()).hexdigest()
                 context = ' · '.join(filter(None, [app.get('department'), app.get('preference'), app.get('applied_at')]))
                 candidates.append(dict(company=site['company'], role=app['title'], status='interviewing', rounds=[],
-                                       next_step='请手动更新当前面试轮次与下一步安排',
+                                       next_step='',
                                        notes='从官网面试中岗位自动加入。'+context, source_key=source_key))
         return self.access(_candidates=candidates)
 

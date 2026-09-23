@@ -9,7 +9,7 @@
 <label>公司 *<input name="company" required maxlength="120"></label><label>岗位<input name="role" maxlength="200" placeholder="不确定可留空，显示岗位待确认"></label>
 <label>当前状态<select name="status"><option value="interviewing">待面试</option><option value="waiting">等待反馈</option><option value="scheduled">准备下一轮</option><option value="offer">已获 Offer</option><option value="ended">已结束</option></select></label>
 <h3>已完成的轮次</h3><p class="calendar-hint">只记录实际完成的面试；未来的具体时间请放在面试日历。</p><div id="trackingRounds"></div><button type="button" id="addTrackingRound">＋ 记录一轮</button>
-<label>下一步<input name="next_step" maxlength="500" placeholder="例如：等待一面反馈，收到通知后安排下一轮"></label><label>备注<textarea name="notes" maxlength="2000" rows="3"></textarea></label>
+<label>下一步<input name="next_step" maxlength="500" placeholder="可选，留空则不显示"></label><label>备注<textarea name="notes" maxlength="2000" rows="3"></textarea></label>
 <p id="trackingFormError" class="request-error" role="alert" hidden></p><div class="form-actions"><button type="button" id="deleteTracking">删除跟进</button><button type="submit" class="primary" id="saveTracking">保存跟进</button></div></form></dialog>
 <section id="calendarView" hidden aria-label="面试日历">
  <div class="calendar-heading"><div><h2>面试日历</h2><p>把下一场面试安排好 · 时间均为北京时间（UTC+8）</p></div><button id="addInterview" class="primary">＋ 添加排期</button></div>
