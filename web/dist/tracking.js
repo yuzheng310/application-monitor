@@ -2,7 +2,7 @@
 (()=>{
  const get=id=>document.getElementById(id),form=get('trackingForm'),dialog=get('trackingDialog');
  const node=(tag,cls,text)=>{const e=document.createElement(tag);e.className=cls||'';e.textContent=text||'';return e;};
- const labels={interviewing:'面试中 · 轮次待更新',waiting:'等待反馈',scheduled:'准备下一轮',offer:'已获 Offer',ended:'已结束'};
+ const labels={interviewing:'待面试',waiting:'等待反馈',scheduled:'准备下一轮',offer:'已获 Offer',ended:'已结束'};
  let rows=[],token='',editing=null,busy=false,archiveOpen=false,refreshing=false;
  const fail=(id,message)=>{get(id).textContent=message;get(id).hidden=!message;};
  async function request(body){
