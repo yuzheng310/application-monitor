@@ -50,6 +50,7 @@ class TrackingTests(unittest.TestCase):
             self.assertEqual(len(result),1)
             self.assertEqual(result[0]['status'],'interviewing')
             self.assertEqual(result[0]['rounds'],[])
+            self.assertEqual(result[0]['notes'],'')
             self.assertEqual(store.sync_sites([site]),result)
 
     def test_same_title_distinct_departments_are_kept_separate(self):

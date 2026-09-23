@@ -20,7 +20,7 @@
    const card=node('article','tracking-card');card.append(node('span','tracking-status',labels[row.status]),node('h3','',row.company),node('p','tracking-role',row.role||'岗位待确认'));
    const history=node('ol','tracking-history');
    for(const round of row.rounds){const entry=node('li','');entry.append(node('time','',round.date),node('strong','',round.round+' · 已完成'));if(round.notes)entry.append(node('p','',round.notes));history.append(entry);}
-   card.append(history);if(!row.rounds.length)card.append(node('p','calendar-hint','尚未记录已完成的轮次'));
+   card.append(history);
    if(row.next_step)card.append(node('p','tracking-next','下一步：'+row.next_step));
    if(row.notes)card.append(node('p','tracking-notes',row.notes));
    const editButton=node('button','','编辑跟进 / 记录下一轮');editButton.onclick=()=>edit(row);card.append(editButton);(row.status==='ended'?archive:list).append(card);
