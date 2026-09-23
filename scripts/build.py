@@ -94,6 +94,9 @@ def main():
         start = bundle / ("Start.command" if system == "darwin" else "Start.sh")
         start.write_text('#!/bin/sh\ncd -- "$(dirname -- "$0")" || exit 1\nexec ./ApplicationMonitor "$@"\n', encoding="utf-8")
         start.chmod(0o755)
+    if system == "darwin":
+        from macos_app import create_app
+        create_app(bundle / "投递进度助手.app")
     executable = bundle / ("ApplicationMonitor.exe" if system == "win" else "ApplicationMonitor")
     env = dict(os.environ, APPLICATION_MONITOR_HOME=str(ROOT / "build/self-test"))
     run(str(executable), "--self-test", env=env)

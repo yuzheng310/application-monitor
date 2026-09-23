@@ -96,11 +96,12 @@ def prepare_extension():
     return target
 
 
-def open_browser(url):
+def open_browser(url, desktop=True):
     extension = prepare_extension()
     browser = browser_executable()
     args = [str(browser), "--user-data-dir=" + str(HOME / "browser"),
             "--no-first-run", "--no-default-browser-check",
-            "--disable-extensions-except=" + str(extension), "--load-extension=" + str(extension), url]
+            "--disable-extensions-except=" + str(extension), "--load-extension=" + str(extension),
+            *(["--app=" + url, "--window-size=1280,900"] if desktop else [url])]
     with (DATA / "browser.log").open("ab") as log:
         return subprocess.Popen(args, stdout=log, stderr=log, **child_options(detached=True))

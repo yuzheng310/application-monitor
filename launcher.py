@@ -57,6 +57,7 @@ def main():
         return
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=18765)
+    parser.add_argument("--browser-tab", action="store_true", help="使用普通浏览器标签页打开看板")
     parser.add_argument("--no-browser", action="store_true", help="仅启动网页服务")
     parser.add_argument("--self-test", action="store_true", help="验证内置运行环境，无需网络")
     args = parser.parse_args()
@@ -91,7 +92,7 @@ def main():
         else:
             raise RuntimeError("网页启动超时，请查看 data/web-server.log。")
     if not args.no_browser:
-        runtime.open_browser(url)
+        runtime.open_browser(url, desktop=not args.browser_tab)
     print("投递进度：" + url)
 
 
