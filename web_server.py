@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """投递进度本地网页，只监听 127.0.0.1。"""
 from records import parse_records, GROUPS
+from interviews import Interviews
 import argparse
 import file_lock
 import runtime
@@ -151,8 +152,13 @@ def handler_for(dashboard):
                 except CheckError as error:
                     self.reply(500, details(error))
                 return
+            if path == "/api/interviews":
+                try:self.reply(200, {"events": Interviews(DATA).access(), "csrf_token": dashboard.token})
+                except (ValueError, OSError) as error:self.reply(500, {"error": str(error) if isinstance(error, ValueError) else "无法读取排期文件。"})
+                return
             files = {"/": ("index.html", "text/html; charset=utf-8"),
                      "/app.js": ("app.js", "text/javascript; charset=utf-8"),
+                     "/calendar.js": ("calendar.js", "text/javascript; charset=utf-8"),
                      "/style.css": ("style.css", "text/css; charset=utf-8")}
             if path not in files:
                 self.reply(404, {"error": "页面不存在"})
@@ -168,6 +174,15 @@ def handler_for(dashboard):
             expected_origin = "http://" + self.headers.get("Host", "")
             if origin not in (None, expected_origin) or not secrets.compare_digest(self.headers.get("X-Query-Token", ""), dashboard.token):
                 self.reply(403, {"error": "请从本地网页点击查询"})
+                return
+            if self.path == "/api/interviews":
+                try:
+                    length = int(self.headers.get('Content-Length', '0'))
+                    if not 0 < length <= 16384:raise ValueError('排期请求过大或为空。')
+                    body = json.loads(self.rfile.read(length))
+                    self.reply(200, {"events": Interviews(DATA).access(body)})
+                except (ValueError, UnicodeError) as error:self.reply(400, {"error": str(error)})
+                except OSError:self.reply(500, {"error": "保存失败，请检查磁盘空间和文件权限。"})
                 return
             if self.path != "/api/refresh":
                 self.reply(404, {"error": "操作不存在"})
