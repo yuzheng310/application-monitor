@@ -2,15 +2,15 @@
 (()=>{
  const get=id=>document.getElementById(id),form=get('trackingForm'),dialog=get('trackingDialog');
  const node=(tag,cls,text)=>{const e=document.createElement(tag);e.className=cls||'';e.textContent=text||'';return e;};
- const labels={waiting:'等待反馈',scheduled:'准备下一轮',offer:'已获 Offer',ended:'已结束'};
- let rows=[],token='',editing=null,busy=false,archiveOpen=false;
+ const labels={interviewing:'面试中 · 轮次待更新',waiting:'等待反馈',scheduled:'准备下一轮',offer:'已获 Offer',ended:'已结束'};
+ let rows=[],token='',editing=null,busy=false,archiveOpen=false,refreshing=false;
  const fail=(id,message)=>{get(id).textContent=message;get(id).hidden=!message;};
  async function request(body){
   const r=await fetch('/api/interview-tracking',body?{method:'POST',headers:{'Content-Type':'application/json','X-Query-Token':token},body:JSON.stringify(body)}:{cache:'no-store'});
   const data=await r.json();if(!r.ok)throw new Error(r.status===403?'页面会话已过期，请关闭编辑窗口后重新进入面试跟进。':data.error||'无法保存跟进');
   if(data.csrf_token)token=data.csrf_token;return data.events;
  }
- async function load(){try{rows=await request();fail('trackingError','');render();return true;}catch(e){fail('trackingError',e.message==='Failed to fetch'?'无法连接本地服务，请重新启动软件。':e.message);return false;}}
+ async function load(){try{rows=await request();render();rows=await request({action:'sync'});fail('trackingError','');render();return true;}catch(e){fail('trackingError',e.message==='Failed to fetch'?'无法连接本地服务，请重新启动软件。':e.message);return false;}}
  function render(){
   const list=node('div','tracking-grid'),archive=node('details','tracking-archive');archive.open=archiveOpen;archive.ontoggle=()=>{if(archive.isConnected)archiveOpen=archive.open;};
   const finished=rows.filter(r=>r.status==='ended');archive.append(node('summary','',`已结束的跟进（${finished.length}）`));
@@ -43,6 +43,10 @@
  get('addTrackingRound').onclick=()=>addRound();get('closeTracking').onclick=()=>dialog.close();dialog.oncancel=e=>{if(busy)e.preventDefault();};
  get('deleteTracking').onclick=()=>{if(get('deleteTracking').textContent!=='确认删除'){get('deleteTracking').textContent='确认删除';return;}save({action:'delete',id:editing});};
  get('addTracking').onclick=async()=>{if(await load())edit();};
+ window.addEventListener('application-status-updated',async()=>{
+  if(get('trackingView').hidden||dialog.open||busy||refreshing||!token)return;refreshing=true;
+  try{const fresh=await request();if(!dialog.open&&!busy){rows=fresh;render();}}catch(e){fail('trackingError',e.message);}finally{refreshing=false;}
+ });
  get('trackingTab').onclick=()=>{get('applicationsView').hidden=get('calendarView').hidden=true;get('trackingView').hidden=false;document.querySelector('.company-directory').hidden=true;document.querySelector('main').classList.add('calendar-open');for(const name of ['applicationsTab','calendarTab','trackingTab'])get(name).setAttribute('aria-pressed',String(name==='trackingTab'));load();};
  for(const name of ['applicationsTab','calendarTab'])get(name).addEventListener('click',()=>{get('trackingView').hidden=true;get('trackingTab').setAttribute('aria-pressed','false');});
 })();

@@ -3,6 +3,8 @@
 import argparse
 import difflib
 from application_changes import describe_changes
+from interview_tracking import InterviewTracking
+from records import parse_records
 import file_lock
 import runtime
 import json
@@ -290,6 +292,12 @@ def run_once(config):
                 result = future.result()
                 if result['status'] != '检查失败':
                     state[site['id']] = {'text': result['text'], 'last_success': result['checked_at']}
+                if result['status'] != '检查失败':
+                    try:
+                        InterviewTracking(DATA).sync_sites([dict(id=site['id'], company=site['name'], applications=parse_records(site['id'], result['text']))])
+                    except (ValueError, OSError) as error:
+                        result['tracking_sync_error'] = '面试跟进同步失败，请打开面试跟进重试；已有记录保留。'
+                        print(result['tracking_sync_error'], flush=True)
                 results.append(result)
                 progress['active'] = [x for x in progress['active'] if x['id'] != site['id']]
                 save(state_path, state)

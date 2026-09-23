@@ -127,7 +127,7 @@ async function load() {
   if(!response.ok){let data={};try{data=await response.json();}catch{}throw new Error([data.error||'本地服务暂时无法读取记录',data.suggestion].filter(Boolean).join('。'));}
   const first=state===null;state=await response.json();
   if(first){const value=String(state.concurrency||4);if(![...$('workers').options].some(o=>o.value===value)){const option=el('option','',value+' 家');option.value=value;$('workers').append(option);}$('workers').value=value;}
-  render();return state;
+  render();window.dispatchEvent(new Event('application-status-updated'));return state;
 }
 async function queryAll(siteIds=null) {
   if(requesting || state?.running)return {started:false,message:'已有查询正在进行'};

@@ -185,7 +185,8 @@ def handler_for(dashboard):
                     length = int(self.headers.get('Content-Length', '0'))
                     if not 0 < length <= 262144:raise ValueError('排期请求过大或为空。')
                     body = json.loads(self.rfile.read(length))
-                    self.reply(200, {"events": store(DATA).access(body)})
+                    events = store(DATA).sync_sites(dashboard.status()["sites"]) if self.path == "/api/interview-tracking" and isinstance(body, dict) and body.get("action") == "sync" else store(DATA).access(body)
+                    self.reply(200, {"events": events})
                 except (ValueError, UnicodeError) as error:self.reply(400, {"error": str(error)})
                 except OSError:self.reply(500, {"error": "保存失败，请检查磁盘空间和文件权限。"})
                 return

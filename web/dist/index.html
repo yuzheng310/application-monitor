@@ -3,11 +3,11 @@
 <main><aside class="company-directory"><h2>公司目录</h2><p>点击跳转 · 有更新的优先</p><nav id="companyNav" aria-label="公司目录"></nav></aside><div class="dashboard-content"><div class="view-switch" role="group" aria-label="查看内容"><button id="applicationsTab" aria-pressed="true">投递进度</button><button id="trackingTab" aria-pressed="false">面试跟进</button><button id="calendarTab" aria-pressed="false">面试日历</button></div>
 <section id="trackingView" hidden aria-label="面试跟进">
 <div class="calendar-heading"><div><h2>面试跟进</h2><p>按岗位记录每一轮面试，关注反馈和下一步。</p></div><button id="addTracking" class="primary">＋ 添加跟进</button></div>
-<p class="calendar-hint">这里是你手动记录的进展；完成一轮面试不代表已通过，官网查询不会覆盖这些记录。</p>
+<p class="calendar-hint">官网显示面试中的岗位会自动加入；面试轮次由你手动更新，已有记录不会被覆盖。</p>
 <p id="trackingError" class="request-error" role="alert" hidden></p><p id="trackingFeedback" role="status"></p><div id="trackingList"></div></section>
 <dialog id="trackingDialog"><form id="trackingForm"><div class="calendar-heading"><h2>编辑面试跟进</h2><button type="button" id="closeTracking" aria-label="关闭">×</button></div>
 <label>公司 *<input name="company" required maxlength="120"></label><label>岗位<input name="role" maxlength="200" placeholder="不确定可留空，显示岗位待确认"></label>
-<label>当前状态<select name="status"><option value="waiting">等待反馈</option><option value="scheduled">准备下一轮</option><option value="offer">已获 Offer</option><option value="ended">已结束</option></select></label>
+<label>当前状态<select name="status"><option value="interviewing">面试中 · 轮次待更新</option><option value="waiting">等待反馈</option><option value="scheduled">准备下一轮</option><option value="offer">已获 Offer</option><option value="ended">已结束</option></select></label>
 <h3>已完成的轮次</h3><p class="calendar-hint">只记录实际完成的面试；未来的具体时间请放在面试日历。</p><div id="trackingRounds"></div><button type="button" id="addTrackingRound">＋ 记录一轮</button>
 <label>下一步<input name="next_step" maxlength="500" placeholder="例如：等待一面反馈，收到通知后安排下一轮"></label><label>备注<textarea name="notes" maxlength="2000" rows="3"></textarea></label>
 <p id="trackingFormError" class="request-error" role="alert" hidden></p><div class="form-actions"><button type="button" id="deleteTracking">删除跟进</button><button type="submit" class="primary" id="saveTracking">保存跟进</button></div></form></dialog>
