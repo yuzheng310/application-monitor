@@ -2,7 +2,7 @@
 (()=>{
  const get=id=>document.getElementById(id),form=get('interviewForm'),dialog=get('interviewDialog');
  const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
- let month=today().slice(0,7),selected=null,events=[],token='',editing=null,busy=false,loaded=false;
+ let month=today().slice(0,7),selected=null,events=[],token='',editing=null,busy=false,loaded=false,historyOpen=false;
  const label={scheduled:'待参加',completed:'已完成',cancelled:'已取消'};
  const node=(tag,cls,text)=>{const e=document.createElement(tag);e.className=cls||'';if(text)e.textContent=text;return e;};
  const dayString=d=>d.toISOString().slice(0,10);
@@ -14,6 +14,9 @@
   if(d.csrf_token)token=d.csrf_token;return d.events;
  }
  async function load(){try{events=await request();loaded=true;fail('calendarError','');render();}catch(e){fail('calendarError',e.message==='Failed to fetch'?'无法连接本地服务，请重新启动软件后重试。':e.message);}}
+ const ended=e=>e.status!=='scheduled'||new Date(e.end+'+08:00').getTime()<=Date.now();
+ const range=e=>e.start.slice(11)+' – '+(e.end.slice(0,10)===e.start.slice(0,10)?e.end.slice(11):e.end.replace('T',' '));
+ function selectDay(date){selected=date;render();get('agendaTitle').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});}
  function render(){
   const [year,m]=month.split('-').map(Number);get('monthLabel').textContent=`${year} 年 ${m} 月`;
   const first=new Date(Date.UTC(year,m-1,1));first.setUTCDate(first.getUTCDate()-(first.getUTCDay()+6)%7);
@@ -21,23 +24,37 @@
   for(let i=0;i<42;i++){
    const d=new Date(first);d.setUTCDate(first.getUTCDate()+i);const date=dayString(d);
    const cell=node('div','calendar-day'+(date.slice(0,7)!==month?' outside':'')+(date===today()?' today':'')+(date===selected?' selected':''));
-   const pick=node('button','day-number',String(d.getUTCDate()));pick.setAttribute('aria-label',date+' 查看排期');pick.onclick=()=>{selected=date;render();};cell.append(pick);
-   const items=events.filter(e=>occurs(e,date));
-   for(const event of items.slice(0,3)){const button=node('button','calendar-event '+event.status,event.start.slice(0,10)===date?event.start.slice(11)+' '+event.company:'续 · '+event.company);button.title=event.company+' '+event.role+' '+event.round;button.onclick=()=>edit(event);cell.append(button);}
-   if(items.length>3){const more=node('button','calendar-more',`还有 ${items.length-3} 场`);more.onclick=()=>{selected=date;render();};cell.append(more);}
+   const pick=node('button','day-number',String(d.getUTCDate()));pick.setAttribute('aria-label',date+' 查看排期');pick.onclick=()=>selectDay(date);cell.append(pick);
+   const all=events.filter(e=>occurs(e,date)).sort((a,b)=>Number(ended(a))-Number(ended(b))||a.start.localeCompare(b.start));
+   const active=all.filter(e=>!ended(e));
+   const items=historyOpen?all:active;
+   if(active.length){cell.classList.add('has-interviews');pick.append(node('span','day-count',String(active.length)+' 场'));}
+   for(const event of items.slice(0,3)){
+    const button=node('button','calendar-event '+event.status+(ended(event)?' past':''));
+    button.append(node('strong','event-time',range(event)),node('span','event-company',event.company),node('span','event-role',event.role||'岗位未填写'));
+    button.title=event.start.replace('T',' ')+' — '+event.end.replace('T',' ')+' · '+event.company+' · '+event.role;
+    button.onclick=()=>selectDay(date);cell.append(button);
+   }
+   if(items.length>3){const more=node('button','calendar-more',`还有 ${items.length-3} 场，查看详情`);more.onclick=()=>selectDay(date);cell.append(more);}
+   if(!historyOpen&&all.length>active.length){const history=node('button','calendar-more',`已结束 ${all.length-active.length} 场`);history.onclick=()=>{historyOpen=true;selectDay(date);};cell.append(history);}
    grid.append(cell);
   }
   get('calendarGrid').replaceChildren(grid);get('agendaTitle').textContent=selected?selected+' 的安排':'近期安排';
-  const list=events.filter(e=>selected?occurs(e,selected):e.status==='scheduled'&&new Date(e.end+'+08:00')>=new Date()).sort((a,b)=>a.start.localeCompare(b.start));
+  const list=events.filter(e=>!selected||occurs(e,selected)).sort((a,b)=>a.start.localeCompare(b.start));
+  const active=list.filter(e=>!ended(e)),past=list.filter(ended).reverse();
+  const history=node('details','calendar-history');history.open=historyOpen;
+  history.append(node('summary','',`已结束 / 已取消的安排（${past.length}）`));
+  history.addEventListener('toggle',()=>{if(history.isConnected&&historyOpen!==history.open){historyOpen=history.open;render();}});
   const agenda=document.createDocumentFragment();
-  if(!list.length){agenda.append(node('p','calendar-hint',selected?'这一天暂无排期。':'暂无待参加的面试，添加你的第一场安排吧。'));}
-  for(const e of list){
-   const card=node('article','interview-card '+e.status);card.append(node('span','calendar-hint',e.start.replace('T',' ')+' — '+(e.end.slice(0,10)===e.start.slice(0,10)?e.end.slice(11):e.end.replace('T',' '))),node('h4','',e.company),node('p','', [e.role,e.round].filter(Boolean).join(' · ')),node('span','interview-status',label[e.status]));
+  if(!active.length){agenda.append(node('p','calendar-hint',selected?'这一天暂无待参加的面试。':'暂无待参加的面试。'));}
+  for(const e of [...active,...past]){
+   const card=node('article','interview-card '+e.status+(ended(e)?' past':' upcoming'));card.append(node('span','interview-date',e.start.slice(0,10)+' · 北京时间'),node('strong','interview-time',range(e)),node('h4','',e.company),node('p','interview-role',e.role||'岗位未填写'),node('p','interview-round',e.round||''),node('span','interview-status',e.status==='scheduled'&&ended(e)?'时间已过 · 待确认结果':label[e.status]));
    if(e.location){let url;try{url=new URL(e.location);}catch{}const place=node(url&&['http:','https:'].includes(url.protocol)?'a':'p','interview-location',e.location);if(place.tagName==='A'){place.href=url.href;place.target='_blank';place.rel='noopener noreferrer';}card.append(place);}
    if(e.notes)card.append(node('p','interview-notes',e.notes));
    if(e.status==='scheduled'&&events.some(x=>x.id!==e.id&&x.status==='scheduled'&&x.start<e.end&&x.end>e.start))card.append(node('p','conflict','与另一场面试时间重叠'));
-   const button=node('button','','编辑排期');button.onclick=()=>edit(e);card.append(button);agenda.append(card);
+   const button=node('button','','编辑排期');button.onclick=()=>edit(e);card.append(button);(ended(e)?history:agenda).append(card);
   }
+  if(past.length)agenda.append(history);
   get('interviewList').replaceChildren(agenda);
  }
  function edit(event){

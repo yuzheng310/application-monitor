@@ -2,6 +2,7 @@
 const $ = id => document.getElementById(id);
 let state=null,requesting=false,timer=null,previousList='';
 let requestError='';
+const expandedEndedCompanies=new Set();
 const formatDuration=value=>value>=60?`${Math.floor(value/60)}分${Math.round(value%60)}秒`:`${Math.round(value)}秒`;
 function requestMessage(message){requestError=message;$('requestError').textContent=message;$('requestError').hidden=!message;}
 function timeLabel(value,full=false){if(!value)return '尚未查询';const d=new Date(value);if(Number.isNaN(d.valueOf()))return '时间未知';return new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',...(full?{month:'2-digit',day:'2-digit'}:{}),hour:'2-digit',minute:'2-digit',hour12:false}).format(d);}
@@ -68,6 +69,10 @@ function render(){
   if(s.error){const error=el('div','error');error.append(el('strong','',s.error),el('p','',s.suggestion||'打开官网确认登录和页面状态后，重试此公司。'));
    error.append(el('small','',`${s.error_code||'READ_ERROR'} · ${s.text?'保留上次成功结果':'尚无成功记录'}`));section.append(error);}
   if(!apps.length)section.append(el('p','empty',s.status==='尚未查询'?'点击官网在内置浏览器登录，然后点击一键查询全部。':'暂未读取到岗位记录，请在官网确认登录状态。'));
+  const endedApps=apps.filter(a=>a.group==='ended');
+  const endedSection=el('details','ended-jobs');endedSection.open=expandedEndedCompanies.has(s.id);
+  endedSection.append(el('summary','',`已结束的岗位（${endedApps.length}）`));
+  endedSection.addEventListener('toggle',()=>{if(endedSection.isConnected){if(endedSection.open)expandedEndedCompanies.add(s.id);else expandedEndedCompanies.delete(s.id);}});
   for(const a of apps){
    const card=el('article','job '+a.group),head=el('div','job-heading');
    head.append(el('h3','',a.title),el('span','status',(s.stale?'上次结果 · ':'')+a.status));card.append(head);
@@ -83,8 +88,9 @@ function render(){
    if(a.auxiliary?.length){const aux=el('div','auxiliary');for(const x of a.auxiliary)aux.append(el('span','',x.label+' · '+({done:'已完成',current:'进行中',future:'待进行',unknown:'未公开'}[x.state]||x.state)));card.append(aux);}
    if(a.pipeline_note)card.append(el('p','pipeline-note',a.pipeline_note));
    if(a.note && !a.auxiliary?.length)card.append(el('p','note',a.note));
-   section.append(card);
+   (a.group==='ended'?endedSection:section).append(card);
   }
+  if(endedApps.length)section.append(endedSection);
   const bottom=el('div','company-bottom');bottom.append(el('span','stamp',(s.stale?'上次成功 ':'检查于 ')+timeLabel(s.stale?s.last_success:s.checked_at,true)));
   const raw=el('details');raw.append(el('summary','','核对官网原始记录'),el('pre','',s.text||'暂无记录'));if(s.diff)raw.append(el('p','','本次变化'),el('pre','',s.diff));bottom.append(raw);section.append(bottom);groups.append(section);
  }
