@@ -2,6 +2,7 @@
 """投递进度本地网页，只监听 127.0.0.1。"""
 from records import parse_records, GROUPS
 from interviews import Interviews
+from interview_tracking import InterviewTracking
 import argparse
 import file_lock
 import runtime
@@ -152,12 +153,14 @@ def handler_for(dashboard):
                 except CheckError as error:
                     self.reply(500, details(error))
                 return
-            if path == "/api/interviews":
-                try:self.reply(200, {"events": Interviews(DATA).access(), "csrf_token": dashboard.token})
+            if path in ("/api/interviews", "/api/interview-tracking"):
+                store = InterviewTracking if path.endswith("interview-tracking") else Interviews
+                try:self.reply(200, {"events": store(DATA).access(), "csrf_token": dashboard.token})
                 except (ValueError, OSError) as error:self.reply(500, {"error": str(error) if isinstance(error, ValueError) else "无法读取排期文件。"})
                 return
             files = {"/": ("index.html", "text/html; charset=utf-8"),
                      "/app.js": ("app.js", "text/javascript; charset=utf-8"),
+                     "/tracking.js": ("tracking.js", "text/javascript; charset=utf-8"),
                      "/calendar.js": ("calendar.js", "text/javascript; charset=utf-8"),
                      "/style.css": ("style.css", "text/css; charset=utf-8")}
             if path not in files:
@@ -175,12 +178,13 @@ def handler_for(dashboard):
             if origin not in (None, expected_origin) or not secrets.compare_digest(self.headers.get("X-Query-Token", ""), dashboard.token):
                 self.reply(403, {"error": "请从本地网页点击查询"})
                 return
-            if self.path == "/api/interviews":
+            if self.path in ("/api/interviews", "/api/interview-tracking"):
+                store = InterviewTracking if self.path.endswith("interview-tracking") else Interviews
                 try:
                     length = int(self.headers.get('Content-Length', '0'))
-                    if not 0 < length <= 16384:raise ValueError('排期请求过大或为空。')
+                    if not 0 < length <= 262144:raise ValueError('排期请求过大或为空。')
                     body = json.loads(self.rfile.read(length))
-                    self.reply(200, {"events": Interviews(DATA).access(body)})
+                    self.reply(200, {"events": store(DATA).access(body)})
                 except (ValueError, UnicodeError) as error:self.reply(400, {"error": str(error)})
                 except OSError:self.reply(500, {"error": "保存失败，请检查磁盘空间和文件权限。"})
                 return
