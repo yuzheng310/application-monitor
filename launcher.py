@@ -8,6 +8,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from urllib.parse import urlsplit
 import runtime
 
 
@@ -58,9 +59,17 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=18765)
     parser.add_argument("--browser-tab", action="store_true", help="使用普通浏览器标签页打开看板")
+    parser.add_argument("--query-browser", action="store_true", help="启动官网查询浏览器")
+    parser.add_argument("--open-url", help="在查询浏览器中打开官网链接")
     parser.add_argument("--no-browser", action="store_true", help="仅启动网页服务")
     parser.add_argument("--self-test", action="store_true", help="验证内置运行环境，无需网络")
     args = parser.parse_args()
+    if args.open_url:
+        target = urlsplit(args.open_url)
+        if target.scheme not in ('https', 'http') or not target.netloc:
+            parser.error('仅支持 HTTP/HTTPS 官网链接')
+        runtime.open_browser(args.open_url, desktop=False)
+        return
     if args.self_test:
         version = subprocess.run(runtime.opencli_command() + ["--version"], check=True,
                                  capture_output=True, text=True, timeout=30, **runtime.child_options())
@@ -91,6 +100,8 @@ def main():
             time.sleep(0.25)
         else:
             raise RuntimeError("网页启动超时，请查看 data/web-server.log。")
+    if args.query_browser:
+        runtime.open_browser("about:blank", desktop=False)
     if not args.no_browser:
         runtime.open_browser(url, desktop=not args.browser_tab)
     print("投递进度：" + url)
