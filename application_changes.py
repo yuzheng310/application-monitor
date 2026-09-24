@@ -22,7 +22,9 @@ def describe_changes(site_id, before, after):
         context = ' · '.join(filter(None, [record.get('department'), record.get('preference'), record.get('applied_at')]))
         changes.append(dict(kind=kind, title=record['title'], context=context, message=message))
     def compare(a, b):
-        if a.get('status') != b.get('status'):
+        if site_id == 'kuaishou' and a.get('status') == '简历筛选' and b.get('status') in ('HR初筛', '用人部门筛选') and '悬浮筛选详情：' not in before:
+            emit('details', b, '新读取到筛选详情：' + b['status'])
+        elif a.get('status') != b.get('status'):
             emit('status', b, f"状态：{a.get('status') or '待确认'} → {b.get('status') or '待确认'}")
         elif stage(a) != stage(b):
             emit('stage', b, f'当前阶段：{stage(a)} → {stage(b)}')

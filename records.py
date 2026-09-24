@@ -1,5 +1,6 @@
 """Clean application records using explicit status fields, never future pipeline labels."""
 import re
+import json
 
 GROUPS = [('interview','面试中'),('written','笔试 / 测评'),('screening','简历筛选'),('applied','已投递'),('waiting','待开启'),('other','其他 / 待确认'),('ended','已结束')]
 DATE = r'20\d{2}[-/]\d{2}[-/]\d{2}'
@@ -50,6 +51,23 @@ def parse_records(site_id, text):
         for title,b in segments([i-1 for i,x in enumerate(lines) if i and x=='变更职位']):
             m=re.search(re.escape(title)+r'：([^\n]+)',current)
             add(title,'已结束' if '已结束' in b else m.group(1) if m else '流程中','\n'.join(b),field(b,'意向地点'))
+            record = records[-1]
+            match = re.search(r'悬浮筛选详情：([^\n]+)', current)
+            try: hover = json.loads(match.group(1)) if match else []
+            except ValueError: hover = []
+            detail = next((x for x in hover if x.get('index') == len(records)-1 and x.get('title') == title), None)
+            if detail and record['group'] == 'screening':
+                substeps = [dict(label=x['label'], state=x['state'], date='') for x in detail.get('steps', [])
+                            if x.get('label') in ('HR初筛', '用人部门筛选') and x.get('state') in ('done', 'current', 'unknown')]
+                active = [x for x in substeps if x['state'] == 'current']
+                if len(active) == 1:
+                    record['status'] = record['screen_level'] = active[0]['label']
+                    expanded = []
+                    for step in record['steps']:
+                        if step['label'] == '简历筛选': expanded.extend(substeps)
+                        else: expanded.append(step)
+                    record['steps'] = expanded
+
     elif site_id=='shlab':
         labels=('简历初筛','笔试','简历评估(校招)','评估通过','部门面试','Job Talk','HR面','意向书','Offer沟通','三方','待入职','已入职')
         for _,b in segments([i for i,x in enumerate(lines) if x=='岗位记录']):

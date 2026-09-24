@@ -41,7 +41,13 @@
         "title": "h3",
         "current": ".status-text.processing"
       },
-      "content_pattern": "投递时间"
+      "content_pattern": "投递时间",
+      "hover_progress": {
+        "row": ".apply-record-container",
+        "title": "h3",
+        "target": ".status-text.processing .anticon-info-circle",
+        "tooltip": ".ant-tooltip.status-item-tooltip:not(.ant-tooltip-hidden)"
+      }
     },
     {
       "id": "didi",

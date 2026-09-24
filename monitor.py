@@ -53,7 +53,7 @@ def cli(config, site, *args, timeout=50):
     # application list. Keep activation and the read/click in one browser turn;
     # network loading and polling waits still overlap across company workers.
     with BROWSER_TURN:
-        if config.get("_page") and args and args[0] in ("eval", "click", "state"):
+        if config.get("_page") and args and args[0] in ("eval", "click", "state", "hover"):
             selected = subprocess.run(command + ["tab", "select", config["_page"]], **options)
             if selected.returncode:
                 raise cli_error(selected.stderr or selected.stdout)
@@ -108,6 +108,8 @@ def read_page(config, site):
         raise CheckError('INVALID_RESPONSE')
     if not isinstance(value, dict) or not isinstance(value.get("text"), str):
         raise CheckError('INVALID_RESPONSE')
+    if config.get('_hover_details'):
+        value.setdefault('extra', []).append('悬浮筛选详情：' + json.dumps(config['_hover_details'], ensure_ascii=False))
     return value
 
 
@@ -195,6 +197,48 @@ def prepare_page(config, site):
             time.sleep(1)
 
 
+def read_hover_details(config, site):
+    spec = site['hover_progress']
+    with BROWSER_TURN:
+        script = """(() => {
+          const spec = SPEC;
+          document.querySelectorAll('[data-monitor-hover]').forEach(e => e.removeAttribute('data-monitor-hover'));
+          return [...document.querySelectorAll(spec.row)].flatMap((row, index) => {
+            const target = row.querySelector(spec.target);
+            if (!target || !target.getClientRects().length) return [];
+            target.setAttribute('data-monitor-hover', String(index));
+            return [{index, title: row.querySelector(spec.title)?.innerText.trim()}];
+          });
+        })()""".replace('SPEC', json.dumps(spec))
+        targets = json.loads(cli(config, site, 'eval', script))
+        details = []
+        for target in targets:
+            cli(config, site, 'hover', f'[data-monitor-hover="{target["index"]}"]')
+            previous, stable = None, 0
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                script = """(() => {
+                  const visible = e => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden' && Number(getComputedStyle(e).opacity) > 0.9;
+                  const tips = [...document.querySelectorAll(TIP)].filter(visible);
+                  if (tips.length !== 1) return [];
+                  return [...tips[0].querySelectorAll('.ant-timeline-item')].map(item => {
+                    const icon = item.querySelector('img')?.getAttribute('src') || '';
+                    return {label: item.querySelector('.ant-timeline-item-content')?.innerText.trim() || '',
+                      state: /\\/evaluation1\\.[\\w-]+\\.svg(?:\\?|$)/.test(icon) ? 'done' : /\\/evaluation2\\.[\\w-]+\\.svg(?:\\?|$)/.test(icon) ? 'current' : 'unknown'};
+                  });
+                })()""".replace('TIP', json.dumps(spec['tooltip']))
+                rows = json.loads(cli(config, site, 'eval', script))
+                stable = stable + 1 if rows and rows == previous else 1
+                previous = rows
+                if rows and stable >= 2:
+                    details.append(dict(index=target['index'], title=target['title'], steps=rows))
+                    break
+                time.sleep(.25)
+            else:
+                raise CheckError('PAGE_LOADING', wait_for_page=True)
+        return details
+
+
 def check_site(config, site):
     if not site.get("selector") or not site.get("ready_text"):
         raise CheckError('CONFIG_ERROR')
@@ -235,6 +279,10 @@ def read_stable_site(config, site):
     while time.monotonic() < deadline:
         try:
             text = validate(read_page(config, site), site)
+            if site.get('hover_progress') and '_hover_details' not in config:
+                config['_hover_details'] = read_hover_details(config, site)
+                previous, stable = None, 0
+                continue
             stable = stable + 1 if text == previous else 1
             previous = text
             if stable >= 3:
