@@ -298,6 +298,33 @@
       "selector": "div:has(> [data-test=\"applicationListItem\"])",
       "ready_text": "应聘记录",
       "content_pattern": "官网投递"
+    },
+    {
+      "id": "shlab",
+      "name": "上海人工智能实验室",
+      "url": "https://www.shlab.org.cn/user/applications?mode=campus",
+      "selector": ".m-list43",
+      "ready_text": "校招投递",
+      "content_pattern": "岗位记录",
+      "expand_records": {
+        "row": ".m-list43 .item",
+        "button": ".arrowbox[data-application-id]",
+        "opened": "z-open",
+        "loaded": ".progressbox .progress:has(> span.z-crt) p"
+      },
+      "table_records": {
+        "row": ".item",
+        "titles": [
+          {
+            "selector": ".title-box a.u-a",
+            "preference": ""
+          }
+        ],
+        "date": ".date",
+        "status": ".progress:has(> span.z-crt) p",
+        "status_in_row": true,
+        "stages": ".progress p"
+      }
     }
   ],
   "concurrency": 4

@@ -40,7 +40,7 @@ def scanner_busy():
 
 def safe_link(url):
     parts = urlsplit(url)
-    query = urlencode([(k, v) for k, v in parse_qsl(parts.query) if k == "dev"])
+    query = urlencode([(k, v) for k, v in parse_qsl(parts.query) if k == "dev" or (k == "mode" and parts.netloc == "www.shlab.org.cn" and v == "campus")])
     fragment = parts.fragment
     if "?" in fragment:
         route, querystring = fragment.split("?", 1)

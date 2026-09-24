@@ -18,7 +18,7 @@ import uuid
 import threading
 import time
 from datetime import datetime, timedelta
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, parse_qs
 from datetime import timezone
 
 BROWSER_TURN = threading.RLock()
@@ -95,7 +95,7 @@ def read_page(config, site):
           });
         }).join('\\n');
       }
-      return {url: location.origin + location.pathname + location.hash,
+      return {url: location.origin + location.pathname + location.search + location.hash,
         title: document.title,
         ready_found: body.includes(READY),
         auth_required: /获取验证码|短信验证码|扫码登录|安全验证|请完成验证/.test(body),
@@ -115,6 +115,7 @@ def same_route(expected_url, actual_url):
     expected, actual = urlsplit(expected_url), urlsplit(actual_url)
     return (expected.scheme == actual.scheme and expected.netloc == actual.netloc
             and actual.path.rstrip("/") == expected.path.rstrip("/")
+            and (not parse_qs(expected.query).get("mode") or parse_qs(expected.query).get("mode") == parse_qs(actual.query).get("mode"))
             and actual.fragment.split("?")[0] == expected.fragment.split("?")[0])
 
 
@@ -141,12 +142,33 @@ def validate(page, site):
 
 def prepare_page(config, site):
     """仅执行已核实的读取操作：切换记录标签、展开历史记录。"""
+    expand = site.get('expand_records')
+    if expand:
+        deadline = time.monotonic() + 40
+        while True:
+            script = """(() => {
+              const spec = SPEC, visible = e => e.getClientRects().length > 0;
+              const rows = [...document.querySelectorAll(spec.row)].filter(visible);
+              const pending = rows.find(row => !row.classList.contains(spec.opened));
+              if (pending) pending.querySelector(spec.button)?.click();
+              return {url: location.origin + location.pathname + location.search + location.hash,
+                ready: rows.length > 0 && rows.every(row => row.classList.contains(spec.opened) &&
+                  [...row.querySelectorAll(spec.loaded)].filter(visible).length === 1)};
+            })()""".replace('SPEC', json.dumps(expand))
+            status = json.loads(cli(config, site, 'eval', script))
+            if not same_route(site['url'], status['url']):
+                raise CheckError('PAGE_REDIRECT')
+            if status['ready']:
+                break
+            if time.monotonic() >= deadline:
+                raise CheckError('SITE_CHANGED')
+            time.sleep(1)
     for step in site.get("read_steps", []):
         deadline = time.monotonic() + 25
         while True:
             script = """(() => {
               const visible = e => e.getClientRects().length > 0;
-              return {url: location.origin + location.pathname + location.hash,
+              return {url: location.origin + location.pathname + location.search + location.hash,
                 done: [...document.querySelectorAll(DONE)].some(visible),
                 count: [...document.querySelectorAll(TARGET)].filter(visible).length};
             })()""".replace("DONE", json.dumps(step["done_selector"])).replace("TARGET", json.dumps(step["selector"]))
