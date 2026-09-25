@@ -84,6 +84,7 @@ def read_page(config, site):
       if (table) {
         text = nodes.flatMap(container => [...container.querySelectorAll(table.row)]).filter(visible).flatMap(row => {
           const date = row.querySelector(table.date)?.innerText.trim() || '';
+          const location = table.location ? row.querySelector(table.location)?.innerText.trim() || '' : '';
           const detail = table.status_in_row ? row : row.nextElementSibling;
           const status = detail?.querySelector(table.status)?.innerText.replace(/^当前状态[：:]\\s*/, '').trim() || '';
           if (!status) return [];
@@ -91,7 +92,7 @@ def read_page(config, site):
           return table.titles.flatMap(column => {
             const title = row.querySelector(column.selector)?.innerText.trim();
             if (!title || ['-', '—', '暂无', '未填写'].includes(title)) return [];
-            return ['岗位记录\\n职位：'+title+'\\n志愿：'+column.preference+'\\n投递时间：'+date+'\\n当前状态：'+status+(stages ? '\\n'+stages : '')];
+            return ['岗位记录\\n职位：'+title+'\\n志愿：'+column.preference+'\\n投递时间：'+date+'\\n当前状态：'+status+(location ? '\\n地点：'+location : '')+(stages ? '\\n'+stages : '')];
           });
         }).join('\\n');
       }

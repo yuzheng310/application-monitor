@@ -127,6 +127,17 @@ def parse_records(site_id, text):
             add(b[1],field(b,'状态'),'\n'.join(b),department=field(b,'职位部门名称'),
                 preference=pref,note='官网仅展示状态文字，未公开具体流程阶段')
             records[-1]['steps']=[]
+    elif site_id=='shopee' and '岗位记录' in lines:
+        for _,b in segments([i for i,x in enumerate(lines) if x=='岗位记录']):
+            title=field(b,'职位')
+            if not title: continue
+            status=field(b,'当前状态')
+            add(title,status,'\n'.join(b),location=field(b,'地点'))
+            record=records[-1]
+            if status in ('初试','复试','加面'): record['group']='interview'
+            if status=='初筛': record['screen_level']='简历筛选（官网未细分）'
+            record['steps']=[dict(label=status or '待确认',date='',state='ended' if record['group']=='ended' else 'current')]
+            record['pipeline_complete']=False
     elif site_id=='shopee':
         for pref,b in segments([i for i,x in enumerate(lines) if re.fullmatch(r'第\s*\d+\s*志愿',x)]):
             if len(b)<2: continue

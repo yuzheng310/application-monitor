@@ -201,14 +201,22 @@
     {
       "id": "shopee",
       "name": "Shopee",
-      "url": "https://app.mokahr.com/campus_apply/shopee/2962#/candidateHome/applications",
-      "selector": "[class^=\"position-block-\"]",
-      "ready_text": "投递记录",
-      "content_pattern": "第\\s*\\d+\\s*志愿",
-      "progress": {
-        "row": "[class^=\"preference-\"]:not([class^=\"preference-top-\"]):not([class^=\"preference-bottom-\"]):not([class^=\"preference-icon-\"])",
-        "title": "[class*=\"font-style-\"]",
-        "current": "[class^=\"flow-box-\"]:has([class*=\"flow-box-processing-\"]) [class^=\"flow-box-name-\"]"
+      "url": "https://app.mokahr.com/candidate/applications/deliver-query/shopee",
+      "selector": "[class^=\"records-\"]",
+      "ready_text": "您已经投递了",
+      "content_pattern": "岗位记录",
+      "table_records": {
+        "row": "[class^=\"recordCard-\"]",
+        "titles": [
+          {
+            "selector": "[class^=\"recordTitle-\"]",
+            "preference": ""
+          }
+        ],
+        "date": "[class^=\"recordTimeValue-\"]",
+        "status": "[class^=\"status-\"]",
+        "status_in_row": true,
+        "location": "[class^=\"recordMeta-\"]"
       }
     },
     {
